@@ -1,0 +1,115 @@
+# CD Tembleque FC
+
+Progressive web app for **CD Tembleque FC** — Segunda Autonómica de Castilla-La Mancha, Group 4.
+Results, league table, squad, stats, match timeline and MVP voting, installable on any phone.
+
+Built with **React 18 + Vite**, data in **Supabase**, deployed on **Vercel**.
+
+## Features
+
+- **Home** — next match countdown, position, points, last results, top scorers.
+- **League table** — computed automatically from every result of the group: total / home / away
+  tables, form guide (last 5), promotion / play-off / relegation zones, points deductions and
+  head-to-head tie-breaks. **Matchday** view with every fixture of each round.
+- **Matches** — upcoming and played matches, home and away.
+- **Match detail**
+  - Minute-by-minute **timeline**: goals (penalty, own goal), assists, yellow / second yellow /
+    red cards and substitutions, with half-time and full-time markers.
+  - 11-a-side lineup (4-4-2, 4-3-3, 4-2-3-1…), call-up and substitutes.
+  - Player sheet with minutes played, and MVP voting.
+- **Stats** — goals, assists, **minutes played**, appearances, starts, cards, saves, goals conceded.
+- **Admin panel** — matches, stats, squad, league (teams, results, zones), seasons and activity log.
+
+### How minutes are calculated
+
+When a match is marked as played (and every time its lineup or timeline changes) the app
+rebuilds that match's rows in `estadisticas`:
+
+| Situation | Minutes |
+| --- | --- |
+| Starter, not replaced | 90 |
+| Starter replaced at minute *m* | *m* |
+| Substitute coming on at minute *m* | 90 − *m* |
+| Sent off (red / second yellow) at minute *m* | until *m* |
+
+Added time is capped (90+3 counts as 90). When the match has a timeline, goals, assists, cards
+and goals conceded by the goalkeeper on the pitch are also derived from it; saves stay manual.
+Season totals are the sum of every match. The logic lives in `src/lib/timeline.js` and is unit-tested.
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local   # fill in your keys (optional for local dev)
+npm run dev                  # http://localhost:5173
+npm test                     # unit tests (vitest)
+```
+
+Without Supabase variables the app runs in **local mode** and stores everything in
+`localStorage`. In development the admin password is `admin`.
+
+## Supabase setup
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Apply the schema — either:
+   - **CLI**: `npx supabase link --project-ref <ref>` then `npx supabase db push`, or
+   - **Dashboard**: paste `supabase/migrations/20261016000000_init.sql` into the SQL Editor.
+3. Run `supabase/seed.sql` once (creates the active season and the club as a league team).
+4. Give each player a personal password from the SQL Editor:
+   `select asignar_clave_jugador(<player_id>, '<password>');`
+5. Copy the project URL and anon key into `.env.local`.
+
+## Deploying to Vercel
+
+1. Import the GitHub repository in Vercel (framework preset: **Vite**).
+2. Add the environment variables from `.env.example` for **Production** and **Preview**.
+   Use a separate Supabase project (or branch) for Preview if you can.
+3. Every push to `main` deploys production; every pull request gets a preview URL.
+
+The SPA rewrite and cache headers are in `vercel.json`.
+
+## Environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | yes | Supabase anon (public) key |
+| `VITE_ADMIN_PASSWORD_HASH` | yes | SHA-256 hex of the admin password |
+| `VITE_CLOUDINARY_CLOUD_NAME` | no | Image uploads (photos, crests) |
+| `VITE_CLOUDINARY_UPLOAD_PRESET` | no | Unsigned upload preset |
+| `VITE_VAPID_PUBLIC_KEY` | no | Web push |
+| `VITE_PUSH_SECRET` | no | Shared secret for the `send-push` edge function |
+
+Generate the admin hash:
+
+```bash
+node -e "console.log(require('crypto').createHash('sha256').update('YOUR_PASSWORD').digest('hex'))"
+```
+
+## Project structure
+
+```
+src/
+  config/club.js        # club name, competition, season — change here
+  lib/
+    store.js            # data layer (Supabase or localStorage)
+    standings.js        # league table + tie-breaks (pure)
+    timeline.js         # timeline helpers + minutes played (pure)
+    playerTotals.js     # season totals per player
+  components/           # MatchTimeline, Alineacion, MatchCard, Sheet…
+  pages/                # one file per route, admin panels in pages/admin
+supabase/
+  migrations/           # SQL schema (source of truth)
+  functions/send-push/  # web push edge function
+```
+
+## Security
+
+The app keeps the original lightweight model: the admin password and player passwords only
+gate the UI, and the anon key can write to the database (RLS policies are permissive).
+Anyone who reads the bundle can call the API directly. Before going public, move to
+**Supabase Auth** and restrict write policies to `authenticated` users.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branching model and commit conventions.

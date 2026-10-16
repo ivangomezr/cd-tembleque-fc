@@ -1,0 +1,292 @@
+import { useMemo, useState } from 'react'
+import { useStore } from '../../hooks/useStore'
+import { useStandings } from '../../hooks/useStandings'
+import { haptics } from '../../lib/haptics'
+import TeamCrest from '../../components/TeamCrest'
+import Sheet from '../../components/Sheet'
+
+const SECTIONS = [
+  { key: 'resultados', label: '📅 Jornadas' },
+  { key: 'equipos', label: '🛡️ Equipos' },
+  { key: 'config', label: '⚙️ Zonas' },
+]
+
+export default function PanelLiga() {
+  const [section, setSection] = useState('resultados')
+  return (
+    <div>
+      <div className="segmented" style={{ marginBottom: 14 }}>
+        {SECTIONS.map((s) => (
+          <button key={s.key} className={section === s.key ? 'active' : ''} onClick={() => setSection(s.key)}>{s.label}</button>
+        ))}
+      </div>
+      {section === 'resultados' && <Resultados />}
+      {section === 'equipos' && <Equipos />}
+      {section === 'config' && <Zonas />}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Results per matchday
+// ─────────────────────────────────────────────────────────────────────────────
+function Resultados() {
+  const { store } = useStore()
+  const { results, equipos } = useStandings()
+  const totalJornadas = Math.max(2 * (equipos.length - 1), 1)
+  const maxConDatos = Math.max(0, ...results.map((r) => r.jornada || 0))
+  const ultimaJugada = Math.max(0, ...results.filter((r) => r.jugado).map((r) => r.jornada || 0))
+  const [jornada, setJornada] = useState(Math.max(1, ultimaJugada || 1))
+  const [edit, setEdit] = useState(null) // { mode, data }
+  const [error, setError] = useState('')
+
+  const team = (id) => equipos.find((e) => e.id === id)
+  const deJornada = results.filter((r) => r.jornada === jornada)
+  const ocupados = new Set(deJornada.flatMap((r) => [r.local_id, r.visitante_id]))
+  const libres = equipos.filter((e) => !ocupados.has(e.id))
+
+  const openAdd = () => {
+    setError('')
+    setEdit({ mode: 'add', data: { jornada, fecha: '', local_id: '', visitante_id: '', goles_local: 0, goles_visitante: 0, jugado: false } })
+  }
+  const openEdit = (r) => { setError(''); setEdit({ mode: 'edit', id: r.id, data: { ...r } }) }
+
+  const save = async () => {
+    const d = edit.data
+    if (!d.local_id || !d.visitante_id) return setError('Elige los dos equipos.')
+    if (Number(d.local_id) === Number(d.visitante_id)) return setError('Un equipo no puede jugar contra sí mismo.')
+    const own = equipos.find((e) => e.es_propio)?.id
+    if ([Number(d.local_id), Number(d.visitante_id)].includes(own)) {
+      return setError('Los partidos del CD Tembleque se gestionan en la pestaña ⚽ Partidos.')
+    }
+    const dup = deJornada.find((r) => r.id !== edit.id && [r.local_id, r.visitante_id].some((x) => [Number(d.local_id), Number(d.visitante_id)].includes(x)))
+    if (dup) return setError(`Uno de los equipos ya juega en la jornada ${d.jornada}.`)
+    if (edit.mode === 'add') await store.addPartidoLiga(d)
+    else await store.updatePartidoLiga(edit.id, d)
+    haptics.success?.()
+    setEdit(null)
+  }
+
+  const set = (k, v) => setEdit((e) => ({ ...e, data: { ...e.data, [k]: v } }))
+
+  if (equipos.length < 2) {
+    return <div className="empty">Añade primero los equipos del grupo en <strong>🛡️ Equipos</strong>.</div>
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+        <button className="btn btn-ghost btn-sm" disabled={jornada <= 1} onClick={() => setJornada((j) => j - 1)} aria-label="Jornada anterior">‹</button>
+        <select className="select" value={jornada} onChange={(e) => setJornada(Number(e.target.value))} style={{ flex: 1, textAlign: 'center' }}>
+          {Array.from({ length: Math.max(totalJornadas, maxConDatos) }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>Jornada {n}</option>
+          ))}
+        </select>
+        <button className="btn btn-ghost btn-sm" disabled={jornada >= Math.max(totalJornadas, maxConDatos)} onClick={() => setJornada((j) => j + 1)} aria-label="Jornada siguiente">›</button>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
+        {deJornada.length === 0 && <div className="empty">Sin partidos en esta jornada</div>}
+        {deJornada.map((r, i) => {
+          const L = team(r.local_id), V = team(r.visitante_id)
+          return (
+            <button key={r.id} onClick={() => !r.own && openEdit(r)} disabled={r.own}
+              style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, padding: '12px 14px', background: r.own ? 'var(--primary-pale)' : 'white', border: 'none', borderBottom: i < deJornada.length - 1 ? '1px solid #e8eff8' : 'none', cursor: r.own ? 'default' : 'pointer', textAlign: 'left', color: 'var(--navy)', opacity: 1 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', fontSize: 13, fontWeight: 600, minWidth: 0 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{L?.nombre_corto || L?.nombre}</span>
+                <TeamCrest team={L} size={22} />
+              </span>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, minWidth: 54, textAlign: 'center', color: r.jugado ? 'var(--navy)' : '#aaa' }}>
+                {r.jugado ? `${r.goles_local} - ${r.goles_visitante}` : 'vs'}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, minWidth: 0 }}>
+                <TeamCrest team={V} size={22} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{V?.nombre_corto || V?.nombre}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {deJornada.some((r) => r.own) && <p style={{ fontSize: 11, color: 'var(--gris-mid)', marginBottom: 10 }}>El partido resaltado es el nuestro: se edita desde ⚽ Partidos.</p>}
+      {libres.length >= 2 && <button className="btn btn-primary btn-block" onClick={openAdd}>+ Añadir partido a la jornada {jornada}</button>}
+      {libres.length === 1 && <p style={{ fontSize: 12, color: 'var(--gris-mid)', textAlign: 'center' }}>Descansa: {libres[0].nombre}</p>}
+
+      {edit && (
+        <Sheet title={edit.mode === 'add' ? `Nuevo partido · J${edit.data.jornada}` : `Editar partido · J${edit.data.jornada}`} onClose={() => setEdit(null)}>
+          {[['local_id', 'Local'], ['visitante_id', 'Visitante']].map(([k, l]) => (
+            <div className="form-group" key={k}>
+              <label className="label">{l}</label>
+              <select className="select" value={edit.data[k]} onChange={(e) => set(k, e.target.value)}>
+                <option value="">Selecciona…</option>
+                {equipos.filter((e) => !e.es_propio).map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+              </select>
+            </div>
+          ))}
+          <div className="form-group">
+            <label className="label">Fecha <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(opcional)</span></label>
+            <input className="input" type="date" value={edit.data.fecha || ''} onChange={(e) => set('fecha', e.target.value)} />
+          </div>
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input id="jugado-liga" type="checkbox" checked={!!edit.data.jugado} onChange={(e) => set('jugado', e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+            <label htmlFor="jugado-liga" className="label" style={{ margin: 0 }}>Partido jugado</label>
+          </div>
+          {edit.data.jugado && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              {[['goles_local', 'Goles local'], ['goles_visitante', 'Goles visitante']].map(([k, l]) => (
+                <div key={k}>
+                  <label className="label">{l}</label>
+                  <input className="input" type="number" min="0" inputMode="numeric" value={edit.data[k]} onChange={(e) => set(k, e.target.value)} style={{ textAlign: 'center', fontFamily: 'Bebas Neue', fontSize: 24 }} />
+                </div>
+              ))}
+            </div>
+          )}
+          {error && <div className="alert-error">⚠️ {error}</div>}
+          <button className="btn btn-primary btn-block" onClick={save}>Guardar</button>
+          {edit.mode === 'edit' && (
+            <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
+              onClick={async () => { if (window.confirm('¿Eliminar este partido de la liga?')) { await store.deletePartidoLiga(edit.id); setEdit(null) } }}>
+              🗑️ Eliminar partido
+            </button>
+          )}
+        </Sheet>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Teams
+// ─────────────────────────────────────────────────────────────────────────────
+function Equipos() {
+  const { equipos, store } = useStore()
+  const [edit, setEdit] = useState(null)
+  const [file, setFile] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const open = (e) => {
+    setFile(null)
+    setError('')
+    setPreview(e?.escudo_url || null)
+    setEdit(e ? { mode: 'edit', id: e.id, es_propio: e.es_propio, data: { nombre: e.nombre, nombre_corto: e.nombre_corto || '', sancion_puntos: e.sancion_puntos || 0, escudo_url: e.escudo_url } }
+      : { mode: 'add', data: { nombre: '', nombre_corto: '', sancion_puntos: 0, escudo_url: null } })
+  }
+  const set = (k, v) => setEdit((e) => ({ ...e, data: { ...e.data, [k]: v } }))
+
+  const save = async () => {
+    const nombre = edit.data.nombre.trim()
+    if (!nombre) return setError('El nombre es obligatorio.')
+    if (equipos.some((e) => e.id !== edit.id && e.nombre.trim().toLowerCase() === nombre.toLowerCase())) return setError('Ya existe un equipo con ese nombre.')
+    setSaving(true)
+    try {
+      let escudo_url = edit.data.escudo_url
+      if (file) escudo_url = await store.uploadEscudoEquipo(file)
+      const data = { ...edit.data, escudo_url }
+      if (edit.mode === 'add') await store.addEquipo(data)
+      else await store.updateEquipo(edit.id, data)
+      haptics.success?.()
+      setEdit(null)
+    } catch (e) {
+      console.error(e)
+      setError('No se pudo guardar el equipo.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 14, color: 'var(--gris-mid)' }}>{equipos.length} equipos en el grupo</span>
+        <button onClick={() => open(null)} className="btn btn-primary btn-sm">+ Añadir equipo</button>
+      </div>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {equipos.map((e, i) => (
+          <button key={e.id} onClick={() => open(e)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: e.es_propio ? 'var(--primary-pale)' : 'white', border: 'none', borderBottom: i < equipos.length - 1 ? '1px solid #e8eff8' : 'none', cursor: 'pointer', textAlign: 'left' }}>
+            <TeamCrest team={e} size={30} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{e.nombre}</div>
+              <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>
+                {e.nombre_corto || '—'}{e.sancion_puntos ? ` · −${e.sancion_puntos} pts sanción` : ''}{e.es_propio ? ' · Nuestro equipo' : ''}
+              </div>
+            </div>
+            <span style={{ color: 'var(--gris-light)' }}>›</span>
+          </button>
+        ))}
+      </div>
+
+      {edit && (
+        <Sheet title={edit.mode === 'add' ? 'Nuevo equipo' : 'Editar equipo'} onClose={() => setEdit(null)}>
+          <div className="form-group">
+            <label className="label">Nombre oficial</label>
+            <input className="input" value={edit.data.nombre} onChange={(e) => set('nombre', e.target.value)} disabled={edit.es_propio} autoFocus={edit.mode === 'add'} />
+          </div>
+          <div className="form-group">
+            <label className="label">Nombre corto <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(para la tabla en móvil)</span></label>
+            <input className="input" value={edit.data.nombre_corto} maxLength={16} onChange={(e) => set('nombre_corto', e.target.value)} placeholder="Ej: Villacañas" />
+          </div>
+          <div className="form-group">
+            <label className="label">Escudo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {preview ? <img src={preview} alt="" style={{ width: 52, height: 52, objectFit: 'contain' }} /> : <TeamCrest team={{ nombre: edit.data.nombre }} size={52} />}
+              <label style={{ flex: 1, background: 'var(--primary-pale)', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                📷 {preview ? 'Cambiar escudo' : 'Subir escudo'}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setPreview(URL.createObjectURL(f)) } }} />
+              </label>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="label">Puntos de sanción <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(se restan en la clasificación)</span></label>
+            <input className="input" type="number" min="0" value={edit.data.sancion_puntos} onChange={(e) => set('sancion_puntos', e.target.value)} />
+          </div>
+          {error && <div className="alert-error">⚠️ {error}</div>}
+          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar'}</button>
+          {edit.mode === 'edit' && !edit.es_propio && (
+            <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
+              onClick={async () => { if (window.confirm('¿Eliminar el equipo y todos sus resultados de liga?')) { await store.deleteEquipo(edit.id); setEdit(null) } }}>
+              🗑️ Eliminar equipo
+            </button>
+          )}
+        </Sheet>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zones (promotion / play-off / relegation)
+// ─────────────────────────────────────────────────────────────────────────────
+function Zonas() {
+  const { temporada, equipos, store } = useStore()
+  const initial = useMemo(() => ({
+    zona_ascenso: temporada?.zona_ascenso ?? 1,
+    zona_promocion: temporada?.zona_promocion ?? 0,
+    zona_descenso: temporada?.zona_descenso ?? 0,
+  }), [temporada])
+  const [form, setForm] = useState(initial)
+  const [saved, setSaved] = useState(false)
+  if (!temporada) return <div className="empty">No hay temporada activa.</div>
+
+  const fields = [
+    ['zona_ascenso', '🟢 Plazas de ascenso directo'],
+    ['zona_promocion', '🔵 Plazas de promoción'],
+    ['zona_descenso', '🔴 Plazas de descenso'],
+  ]
+  return (
+    <div className="card">
+      <p style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 14, lineHeight: 1.5 }}>
+        Las plazas cambian cada temporada según las bases de competición de la FFCM. Ajústalas aquí y la tabla pintará las zonas automáticamente.
+      </p>
+      {fields.map(([k, l]) => (
+        <div className="form-group" key={k}>
+          <label className="label">{l}</label>
+          <input className="input" type="number" min="0" max={equipos.length} value={form[k]} onChange={(e) => { setForm((f) => ({ ...f, [k]: Number(e.target.value) })); setSaved(false) }} />
+        </div>
+      ))}
+      <button className="btn btn-primary btn-block" onClick={async () => { await store.updateTemporada(temporada.id, form); setSaved(true); haptics.success?.() }}>
+        {saved ? '✓ Guardado' : 'Guardar zonas'}
+      </button>
+    </div>
+  )
+}
