@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../hooks/useStore'
-import { adminAuth } from '../lib/adminAuth'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Patrocinadores() {
     const { store } = useStore()
@@ -12,7 +12,7 @@ export default function Patrocinadores() {
     const [preview, setPreview] = useState(null)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
-    const isAdmin = adminAuth.isLogged()
+    const { isAdmin } = useAuth()
 
     useEffect(() => {
         store.getPatrocinadores().then(data => { setLista(data); setLoading(false) })

@@ -123,23 +123,21 @@ const tid = () => _temporadaActiva?.id ?? null
 // ─────────────────────────────────────────────────────────────────────────────
 // Activity log
 // ─────────────────────────────────────────────────────────────────────────────
-function getJugadorActivo() {
-  try { return JSON.parse(localStorage.getItem(key('jugador_activo'))) } catch { return null }
-}
+// Who is acting, for the local (no-Supabase) log only. With Supabase the actor is
+// set on the server from the JWT (trigger activity_log_actor) and cannot be spoofed.
+let actorProvider = () => null
+export function setActorProvider(fn) { actorProvider = fn }
 
 async function log(accion, entidad, detalle = '') {
-  const jugador = getJugadorActivo()
-  const entrada = {
-    jugador_id: jugador?.id || null,
-    jugador_nombre: jugador?.nombre || 'Sistema',
-    accion,
-    entidad,
-    detalle: detalle || '',
-    temporada_id: tid(),
-  }
+  const entrada = { accion, entidad, detalle: detalle || '', temporada_id: tid() }
   try {
-    if (USE_SUPABASE) await supabase.from('activity_log').insert(entrada)
-    else save('activity_log', [{ id: Date.now(), ...entrada, created_at: new Date().toISOString() }, ...load('activity_log', [])].slice(0, 200))
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('activity_log').insert(entrada)
+      if (error) console.warn('[log]', error.message)
+    } else {
+      const actor = actorProvider()
+      save('activity_log', [{ id: Date.now(), ...entrada, jugador_id: actor?.jugador_id ?? null, jugador_nombre: actor?.nombre || 'Local', created_at: new Date().toISOString() }, ...load('activity_log', [])].slice(0, 200))
+    }
   } catch (e) { console.error('[log]', e) }
 }
 

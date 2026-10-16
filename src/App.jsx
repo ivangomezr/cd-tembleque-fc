@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import ErrorToast from './components/ErrorToast'
+import SessionNotice from './components/SessionNotice'
+import { useAuth } from './hooks/useAuth'
+import { setActorProvider } from './lib/store'
 import { PullIndicator } from './components/PullIndicator'
 import { store } from './lib/store'
 import Inicio from './pages/Inicio'
@@ -103,6 +106,9 @@ function SplashScreen({ onDone }) {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true)
+  const auth = useAuth()
+  // Local (no-Supabase) activity log only; with Supabase the server sets the actor
+  setActorProvider(() => (auth.session ? { jugador_id: auth.jugadorId, nombre: auth.profile?.nombre || auth.session.user?.email } : null))
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -126,6 +132,7 @@ export default function App() {
       <PullIndicator onRefresh={handleRefresh} />
       <Navbar />
       <ErrorToast />
+      <SessionNotice />
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/clasificacion" element={<Clasificacion />} />

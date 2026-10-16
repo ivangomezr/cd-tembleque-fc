@@ -9,7 +9,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db": "supabase test db",
+    "auth-admin": "node scripts/auth-admin.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
