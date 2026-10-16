@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
-import { adminAuth } from '../lib/adminAuth'
+import { useAuth } from '../hooks/useAuth'
 import { ResultCard, UpcomingCard } from '../components/MatchCard'
 
 const sectionTitle = { fontSize: 16, fontWeight: 700, color: 'var(--gris-mid)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }
@@ -8,7 +8,7 @@ const sectionTitle = { fontSize: 16, fontWeight: 700, color: 'var(--gris-mid)', 
 export default function Partidos() {
   const nav = useNavigate()
   const { partidos, loading } = useStore()
-  const isAdmin = adminAuth.isLogged()
+  const { isAdmin } = useAuth()
 
   const jugados = partidos.filter((p) => p.jugado).sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
   const proximos = partidos.filter((p) => !p.jugado).sort((a, b) => new Date(a.fecha) - new Date(b.fecha))

@@ -38,9 +38,9 @@ function dbError(op, table, error) {
  * `where` is an equality filter object, e.g. { partido_id: 3 }.
  */
 const db = {
-  async select(table, where = {}) {
+  async select(table, where = {}, columns = '*') {
     if (USE_SUPABASE) {
-      let q = supabase.from(table).select('*')
+      let q = supabase.from(table).select(columns)
       Object.entries(where).forEach(([k, v]) => { q = v === null ? q.is(k, null) : q.eq(k, v) })
       const { data, error } = await q
       if (error) console.error(`[db] select ${table}`, error)
@@ -115,6 +115,7 @@ let _stats = []
 let _equipos = []      // league teams of the active season
 let _partidosLiga = [] // league fixtures between OTHER teams
 let _temporadaActiva = null
+let _privado = new Map() // jugador_id → estado_desc (members only)
 
 let listeners = []
 const notify = () => listeners.forEach((fn) => fn())
@@ -123,23 +124,21 @@ const tid = () => _temporadaActiva?.id ?? null
 // ─────────────────────────────────────────────────────────────────────────────
 // Activity log
 // ─────────────────────────────────────────────────────────────────────────────
-function getJugadorActivo() {
-  try { return JSON.parse(localStorage.getItem(key('jugador_activo'))) } catch { return null }
-}
+// Who is acting, for the local (no-Supabase) log only. With Supabase the actor is
+// set on the server from the JWT (trigger activity_log_actor) and cannot be spoofed.
+let actorProvider = () => null
+export function setActorProvider(fn) { actorProvider = fn }
 
 async function log(accion, entidad, detalle = '') {
-  const jugador = getJugadorActivo()
-  const entrada = {
-    jugador_id: jugador?.id || null,
-    jugador_nombre: jugador?.nombre || 'Sistema',
-    accion,
-    entidad,
-    detalle: detalle || '',
-    temporada_id: tid(),
-  }
+  const entrada = { accion, entidad, detalle: detalle || '', temporada_id: tid() }
   try {
-    if (USE_SUPABASE) await supabase.from('activity_log').insert(entrada)
-    else save('activity_log', [{ id: Date.now(), ...entrada, created_at: new Date().toISOString() }, ...load('activity_log', [])].slice(0, 200))
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from('activity_log').insert(entrada)
+      if (error) console.warn('[log]', error.message)
+    } else {
+      const actor = actorProvider()
+      save('activity_log', [{ id: Date.now(), ...entrada, jugador_id: actor?.jugador_id ?? null, jugador_nombre: actor?.nombre || 'Local', created_at: new Date().toISOString() }, ...load('activity_log', [])].slice(0, 200))
+    }
   } catch (e) { console.error('[log]', e) }
 }
 
@@ -154,6 +153,9 @@ const normalizeStat = (s) => ({
   minutos: s.minutos || 0,
   titular: !!s.titular,
 })
+
+/** Columns of `jugadores` readable by visitors (see migration 20261017120000_db_hardening). */
+const JUGADOR_PUBLIC_COLUMNS = 'id, nombre, posicion, dorsal, foto_url, estado, activo, created_at'
 
 const sortEquipos = (list) => [...list].sort((a, b) => a.nombre.localeCompare(b.nombre))
 
@@ -187,13 +189,13 @@ export const store = {
     await store.initTemporada()
     const filtro = tid() ? { temporada_id: tid() } : {}
     const [jugadores, partidos, stats, equipos, partidosLiga] = await Promise.all([
-      db.select('jugadores'), // players are global, not per season
+      db.select('jugadores', {}, JUGADOR_PUBLIC_COLUMNS), // players are global; private data loaded separately
       db.select('partidos', filtro),
       db.select('estadisticas', filtro),
       db.select('equipos_liga', filtro),
       db.select('partidos_liga', filtro),
     ])
-    _jugadores = jugadores.map((j) => ({ ...j, estado: j.estado || 'disponible', estado_desc: j.estado_desc || null }))
+    _jugadores = jugadores.map((j) => ({ ...j, estado: j.estado || 'disponible', estado_desc: j.estado_desc || _privado.get(j.id) || null }))
     _partidos = partidos.map((p) => ({ ...p, jugado: !!p.jugado, convocados: p.convocados || [], equipacion: p.equipacion || DEFAULT_KIT }))
     _stats = stats.map(normalizeStat)
     _equipos = sortEquipos(equipos)
@@ -266,6 +268,23 @@ export const store = {
     return { partidos, stats: stats.map(normalizeStat), equipos, partidosLiga, clasificacion }
   },
 
+  /** Loads members-only player details (RLS returns nothing to visitors). */
+  async loadJugadoresPrivado() {
+    if (!USE_SUPABASE) return
+    const rows = await db.select('jugadores_privado')
+    _privado = new Map(rows.map((r) => [r.jugador_id, r.estado_desc]))
+    _jugadores = _jugadores.map((j) => ({ ...j, estado_desc: _privado.get(j.id) ?? null }))
+    notify()
+  },
+
+  /** Forget members-only details (on sign-out). */
+  clearJugadoresPrivado() {
+    if (!USE_SUPABASE || !_privado.size) return
+    _privado = new Map()
+    _jugadores = _jugadores.map((j) => ({ ...j, estado_desc: null }))
+    notify()
+  },
+
   // ── Players ────────────────────────────────────────────────────────────────
   async addJugador(j) {
     const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible' })
@@ -280,10 +299,17 @@ export const store = {
       dorsal: data.dorsal,
       foto_url: data.foto_url || null,
       estado: data.estado || 'disponible',
-      estado_desc: data.estado_desc || null,
     }
-    await db.update('jugadores', { id }, patch)
-    _jugadores = _jugadores.map((j) => (j.id === id ? { ...j, ...patch } : j))
+    const estado_desc = data.estado_desc || null
+    if (USE_SUPABASE) {
+      await db.update('jugadores', { id }, patch)
+      // Private details live in jugadores_privado (members only)
+      await db.upsert('jugadores_privado', [{ jugador_id: id, estado_desc }], ['jugador_id'])
+    } else {
+      await db.update('jugadores', { id }, { ...patch, estado_desc })
+    }
+    _privado.set(id, estado_desc)
+    _jugadores = _jugadores.map((j) => (j.id === id ? { ...j, ...patch, estado_desc } : j))
     await log('✏️ Editó', 'Jugador', data.nombre)
     notify()
   },
@@ -609,8 +635,24 @@ export const store = {
   },
 
   // ── MVP votes ──────────────────────────────────────────────────────────────
+  /**
+   * MVP votes are a secret ballot: everyone gets the totals, a player only sees
+   * his own vote (admins see all, enforced by RLS).
+   * @returns {{ ranking: {votado_id:number, votos:number}[], visibles: object[] }}
+   */
   async getVotosMvp(partido_id) {
-    return db.select('votos_mvp', { partido_id })
+    if (USE_SUPABASE) {
+      const [{ data: ranking, error }, visibles] = await Promise.all([
+        supabase.rpc('mvp_ranking', { p_partido_id: partido_id }),
+        supabase.auth.getSession().then(({ data }) => (data?.session ? db.select('votos_mvp', { partido_id }) : [])),
+      ])
+      if (error) console.error('[db] mvp_ranking', error)
+      return { ranking: ranking || [], visibles }
+    }
+    const rows = await db.select('votos_mvp', { partido_id })
+    const conteo = {}
+    rows.forEach((v) => { conteo[v.votado_id] = (conteo[v.votado_id] || 0) + 1 })
+    return { ranking: Object.entries(conteo).map(([votado_id, votos]) => ({ votado_id: Number(votado_id), votos })), visibles: rows }
   },
   async votarMvp(partido_id, votante_id, votado_id) {
     await db.upsert('votos_mvp', [{ partido_id, votante_id, votado_id, temporada_id: tid() }], ['partido_id', 'votante_id'])

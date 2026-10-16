@@ -9,6 +9,7 @@ dist/
 .env
 .env.*
 !.env.example
+!scripts/.env.admin.example
 
 # Supabase CLI local state
 supabase/.temp/
@@ -27,3 +28,6 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 coverage/
+
+# Service-role credentials for scripts/auth-admin.mjs
+scripts/.env.admin

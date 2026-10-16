@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
-import { adminAuth } from '../lib/adminAuth'
+import { useAuth } from '../hooks/useAuth'
 import { haptics } from '../lib/haptics'
 import { isHome, rivalName, matchResult, matchSides } from '../lib/match'
 import { startersFromLineup, eventsByPlayer } from '../lib/timeline'
@@ -34,14 +34,15 @@ export default function DetallePartido() {
   const { id } = useParams()
   const nav = useNavigate()
   const { partidos, jugadores, stats, store, loading } = useStore()
-  const isAdmin = adminAuth.isLogged()
-  const jugadorActivo = isAdmin ? adminAuth.getJugador() : null
+  const auth = useAuth()
+  const isAdmin = auth.isAdmin
+  const jugadorActivo = auth.jugadorId ? jugadores.find((j) => j.id === auth.jugadorId) || null : null
 
   const partido = partidos.find((p) => p.id === Number(id))
   const [alineacion, setAlineacion] = useState(null)
   const [alineacionCargada, setAlineacionCargada] = useState(false)
   const [eventos, setEventos] = useState([])
-  const [votos, setVotos] = useState([])
+  const [votos, setVotos] = useState({ ranking: [], visibles: [] })
   const [miVoto, setMiVoto] = useState(null)
   const [editEvento, setEditEvento] = useState(null) // null | {} (new) | event
   const [editConvocatoria, setEditConvocatoria] = useState(false)
@@ -52,11 +53,13 @@ export default function DetallePartido() {
     if (!partido) return
     store.getAlineacion(partido.id).then((a) => { setAlineacion(a); setAlineacionCargada(true) })
     cargarEventos()
-    store.getVotosMvp(partido.id).then((v) => {
-      setVotos(v)
-      if (jugadorActivo) setMiVoto(v.find((x) => x.votante_id === jugadorActivo.id)?.votado_id || null)
-    })
+    store.getVotosMvp(partido.id).then(setVotos)
   }, [partido?.id])
+
+  // My vote depends on who is logged in (can change without leaving the page)
+  useEffect(() => {
+    setMiVoto(auth.jugadorId ? votos.visibles.find((x) => x.votante_id === auth.jugadorId)?.votado_id || null : null)
+  }, [votos, auth.jugadorId])
 
   if (!partido) {
     return <div className="page anim-fade"><div className="empty">{loading ? 'Cargando…' : 'Partido no encontrado'}</div></div>
@@ -84,10 +87,8 @@ export default function DetallePartido() {
   })
 
   // MVP ranking
-  const conteo = {}
-  votos.forEach((v) => { conteo[v.votado_id] = (conteo[v.votado_id] || 0) + 1 })
-  const ranking = Object.entries(conteo).sort((a, b) => b[1] - a[1])
-    .map(([jid, n]) => ({ jugador: getJugador(Number(jid)), votos: n })).filter((x) => x.jugador)
+  const ranking = [...votos.ranking].sort((a, b) => b.votos - a.votos)
+    .map((r) => ({ jugador: getJugador(Number(r.votado_id)), votos: r.votos })).filter((x) => x.jugador)
   const mvpId = partido.mvp_jugador_id || ranking[0]?.jugador.id || null
   const votables = jugadores.filter((j) => convocadosIds.includes(j.id) || statsPartido.some((s) => s.jugador_id === j.id && s.minutos > 0)).sort(byPos)
 
