@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import ErrorToast from './components/ErrorToast'
 import { PullIndicator } from './components/PullIndicator'
 import { store } from './lib/store'
 import Inicio from './pages/Inicio'
@@ -124,6 +125,7 @@ export default function App() {
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <PullIndicator onRefresh={handleRefresh} />
       <Navbar />
+      <ErrorToast />
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/clasificacion" element={<Clasificacion />} />

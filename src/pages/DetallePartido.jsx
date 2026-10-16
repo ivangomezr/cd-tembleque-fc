@@ -4,11 +4,14 @@ import { useStore } from '../hooks/useStore'
 import { adminAuth } from '../lib/adminAuth'
 import { haptics } from '../lib/haptics'
 import { isHome, rivalName, matchResult, matchSides } from '../lib/match'
-import { startersFromLineup } from '../lib/timeline'
+import { startersFromLineup, eventsByPlayer } from '../lib/timeline'
+import { PlayerBadges, hasBadges } from '../components/EventIcons'
 import Alineacion from '../components/Alineacion'
 import MatchTimeline, { EventEditor } from '../components/MatchTimeline'
 import TeamCrest from '../components/TeamCrest'
 import Sheet from '../components/Sheet'
+import KitPicker from '../components/KitPicker'
+import { KITS, DEFAULT_KIT } from '../config/club'
 
 const fmt = (str) => new Date(str).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const posOrder = { Portero: 0, Defensa: 1, Centrocampista: 2, Delantero: 3 }
@@ -70,11 +73,14 @@ export default function DetallePartido() {
   const statsPartido = stats.filter((s) => s.partido_id === partido.id)
   const statOf = (jid) => statsPartido.find((s) => s.jugador_id === jid)
 
-  // Badges on the pitch shirts (goals / cards)
+  // Event badges (goals, penalties, own goals, cards) for shirts and substitutes.
+  // From the timeline when there is one; otherwise from the manual stats.
+  const eventInfo = eventos.length ? eventsByPlayer(eventos) : Object.fromEntries(statsPartido.map((s) => [s.jugador_id, {
+    goles: s.goles, penaltis: 0, propia: 0, amarillas: s.tarjetas_amarillas, roja: s.tarjetas_rojas > 0, segunda: false,
+  }]))
   const badges = {}
-  statsPartido.forEach((s) => {
-    const b = `${'⚽'.repeat(Math.min(s.goles, 3))}${s.tarjetas_rojas ? '🟥' : s.tarjetas_amarillas ? '🟨' : ''}`
-    if (b) badges[s.jugador_id] = b
+  Object.entries(eventInfo).forEach(([id, info]) => {
+    if (hasBadges(info)) badges[id] = <PlayerBadges info={info} size={10} />
   })
 
   // MVP ranking
@@ -175,10 +181,17 @@ export default function DetallePartido() {
         <div className="card" style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h2 style={{ fontSize: 18, color: 'var(--primary)' }}>👕 {partido.jugado ? 'Alineación' : 'Alineación prevista'}</h2>
-            <span style={{ fontSize: 12, color: 'var(--gris-mid)' }}>{alineacion?.formacion || ''}</span>
+            <span style={{ fontSize: 12, color: 'var(--gris-mid)' }}>
+              {alineacion?.formacion ? `${alineacion.formacion} · ` : ''}Equipación {(KITS[partido.equipacion] || KITS[DEFAULT_KIT]).label.toLowerCase()}
+            </span>
           </div>
+          {isAdmin && (
+            <div style={{ marginBottom: 12 }}>
+              <KitPicker value={partido.equipacion || DEFAULT_KIT} onChange={(v) => v !== partido.equipacion && store.updatePartido(partido.id, { equipacion: v })} />
+            </div>
+          )}
           {alineacionCargada
-            ? <Alineacion jugadores={jugadores} alineacionInicial={alineacion} onSave={guardarAlineacion} modoEdicion={isAdmin} elegibles={convocados} mvpId={partido.jugado ? mvpId : null} badges={badges} />
+            ? <Alineacion jugadores={jugadores} alineacionInicial={alineacion} onSave={guardarAlineacion} modoEdicion={isAdmin} elegibles={convocados} mvpId={partido.jugado ? mvpId : null} badges={badges} kit={partido.equipacion || DEFAULT_KIT} />
             : <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gris-mid)', fontSize: 13 }}>Cargando alineación…</div>}
 
           <div style={{ marginTop: 20, borderTop: '1px solid #e8eff8', paddingTop: 14 }}>
@@ -189,12 +202,18 @@ export default function DetallePartido() {
             {(partido.jugado ? suplentes : convocados).length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[...(partido.jugado ? suplentes : convocados)].sort(byPos).map((j) => {
-                  const mins = statOf(j.id)?.minutos
+                  const info = partido.jugado ? eventInfo[j.id] : null
                   return (
                     <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafd', border: '1px solid #e8eff8', padding: '4px 12px 4px 4px', borderRadius: 24 }}>
-                      <Avatar jugador={j} size={28} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gris-dark)' }}>{j.nombre}</span>
-                      {partido.jugado && <span style={{ fontSize: 11, color: mins ? 'var(--primary)' : 'var(--gris-mid)' }}>{mins ? `${mins}'` : 'No jugó'}</span>}
+                      <span style={{ position: 'relative', display: 'inline-flex' }}>
+                        <Avatar jugador={j} size={28} />
+                        {hasBadges(info) && (
+                          <span style={{ position: 'absolute', top: -7, right: -12, zIndex: 1 }}>
+                            <PlayerBadges info={info} size={9} />
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gris-dark)', marginLeft: hasBadges(info) ? 8 : 0 }}>{j.nombre}</span>
                     </div>
                   )
                 })}

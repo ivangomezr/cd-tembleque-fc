@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
 import { adminAuth } from '../lib/adminAuth'
-import { CLUB, COMPETITION_LABEL, COMPETITION } from '../config/club'
-import { isHome, rivalName, ourScore, matchResult, matchSides, kickoff, teamInitials, RESULT_COLORS } from '../lib/match'
+import { CLUB, COMPETITION_LABEL, COMPETITION, DEFAULT_KIT } from '../config/club'
+import KitPicker from '../components/KitPicker'
+import { ResultCard } from '../components/MatchCard'
+import { isHome, rivalName, ourScore, kickoff } from '../lib/match'
 import PanelLiga from './admin/PanelLiga'
 import Sheet from '../components/Sheet'
+import { SUPABASE_READY } from '../lib/supabase'
 import { haptics } from '../lib/haptics'
 import { enviarNotificacionResultado } from '../lib/push'
 
@@ -63,39 +66,41 @@ function PanelJugadores({ jugadores, store }) {
     setErrorValidacion(null)
     setModal({ mode: 'edit', id: j.id })
   }
+  const [guardando, setGuardando] = useState(false)
   const save = async () => {
-    if (!form.nombre.trim()) return
+    if (!form.nombre.trim()) { setErrorValidacion('El nombre es obligatorio.'); return }
 
-    const dorsalNum = Number(form.dorsal) || 0;
-    const jugadorConflicto = jugadores.find(j =>
+    const dorsalNum = Number(form.dorsal) || null
+    const jugadorConflicto = dorsalNum && jugadores.find(j =>
       j.dorsal === dorsalNum && (modal.mode === 'add' || j.id !== modal.id)
-    );
-
+    )
     if (jugadorConflicto) {
-      if (typeof haptics !== 'undefined' && haptics.error) haptics.error();
-      setErrorValidacion(`El dorsal #${dorsalNum} ya pertenece a ${jugadorConflicto.nombre}`); return;
+      haptics.error?.()
+      setErrorValidacion(`El dorsal #${dorsalNum} ya pertenece a ${jugadorConflicto.nombre}`)
+      return
     }
 
-    let foto_url = form.foto_url || null
-
-    if (fotoArchivo) {
-      const id = modal.mode === 'add'
-        ? Math.max(0, ...store.getJugadores().map(j => j.id)) + 1
-        : modal.id
-      foto_url = await store.subirFotoJugador(id, fotoArchivo)
+    setGuardando(true)
+    try {
+      let foto_url = form.foto_url || null
+      if (fotoArchivo) {
+        foto_url = await store.subirFotoJugador(modal.id, fotoArchivo)
+        if (!foto_url) throw new Error('No se pudo subir la foto. Revisa la configuración de Cloudinary.')
+      }
+      const data = { ...form, nombre: form.nombre.trim(), dorsal: dorsalNum, foto_url }
+      if (modal.mode === 'add') await store.addJugador(data)
+      else await store.updateJugador(modal.id, data)
+      haptics.success?.()
+      setFotoArchivo(null)
+      setFotoPreview(null)
+      setModal(null)
+    } catch (e) {
+      console.error('[jugadores] save failed', e)
+      haptics.error?.()
+      setErrorValidacion(`No se pudo guardar: ${e?.message || e}`)
+    } finally {
+      setGuardando(false)
     }
-
-    if (typeof haptics !== 'undefined' && haptics.success) haptics.success()
-
-    if (modal.mode === 'add') {
-      store.addJugador({ ...form, dorsal: dorsalNum, foto_url })
-    } else {
-      store.updateJugador(modal.id, { ...form, dorsal: dorsalNum, foto_url })
-    }
-
-    setFotoArchivo(null)
-    setFotoPreview(null)
-    setModal(null)
   }
   const del = (id) => { if (window.confirm('¿Eliminar jugador y todas sus estadísticas?')) { haptics.error(); store.deleteJugador(id) } }
 
@@ -179,7 +184,7 @@ function PanelJugadores({ jugadores, store }) {
               ⚠️ {errorValidacion}
             </div>
           )}
-          <button onClick={save} className="btn btn-primary btn-block">Guardar</button>
+          <button onClick={save} className="btn btn-primary btn-block" disabled={guardando}>{guardando ? '⏳ Guardando…' : 'Guardar'}</button>
         </Modal>
       )}
     </div>
@@ -190,7 +195,7 @@ function PanelJugadores({ jugadores, store }) {
 function PanelPartidos({ partidos, store }) {
   const { equipos } = useStore()
   const [modal, setModal] = useState(null)
-  const emptyP = { jornada: '', fecha: '', hora: '', enCasa: true, rival: '', campo: CLUB.homeGround, jugado: false, goles_local: 0, goles_visitante: 0, amistoso: false, escudo_rival_url: null }
+  const emptyP = { jornada: '', fecha: '', hora: '', enCasa: true, rival: '', campo: CLUB.homeGround, jugado: false, goles_local: 0, goles_visitante: 0, amistoso: false, escudo_rival_url: null, equipacion: DEFAULT_KIT }
   const [form, setForm] = useState(emptyP)
   const [escudoFile, setEscudoFile] = useState(null)
   const [escudoPreview, setEscudoPreview] = useState(null)
@@ -203,7 +208,7 @@ function PanelPartidos({ partidos, store }) {
 
   const openAdd = () => { setForm(emptyP); setEscudoFile(null); setEscudoPreview(null); setErrorValidacion(null); setModal({ mode: 'add' }) }
   const openEdit = (p) => {
-    setForm({ jornada: p.jornada, fecha: p.fecha, hora: p.hora || '', enCasa: isHome(p), rival: rivalName(p), campo: p.campo || '', jugado: p.jugado, goles_local: p.goles_local, goles_visitante: p.goles_visitante, amistoso: !!p.amistoso, escudo_rival_url: p.escudo_rival_url || null })
+    setForm({ jornada: p.jornada, fecha: p.fecha, hora: p.hora || '', enCasa: isHome(p), rival: rivalName(p), campo: p.campo || '', jugado: p.jugado, goles_local: p.goles_local, goles_visitante: p.goles_visitante, amistoso: !!p.amistoso, escudo_rival_url: p.escudo_rival_url || null, equipacion: p.equipacion || DEFAULT_KIT })
     setEscudoFile(null)
     setEscudoPreview(p.escudo_rival_url || store.crestFor(rivalName(p)) || null)
     setErrorValidacion(null)
@@ -259,6 +264,7 @@ function PanelPartidos({ partidos, store }) {
         goles_local: Number(form.goles_local) || 0,
         goles_visitante: Number(form.goles_visitante) || 0,
         escudo_rival_url: escudoUrl,
+        equipacion: form.equipacion || DEFAULT_KIT,
       }
       const before = modal.mode === 'edit' ? partidos.find(p => p.id === modal.id) : null
       const saved = modal.mode === 'add' ? await store.addPartido(data) : (await store.updatePartido(modal.id, data), { id: modal.id })
@@ -278,9 +284,6 @@ function PanelPartidos({ partidos, store }) {
   }
   const del = (id) => { if (window.confirm('¿Eliminar partido, su timeline y sus estadísticas?')) store.deletePartido(id) }
 
-  const Escudo = ({ src, name, size = 40 }) => src
-    ? <img src={src} alt={name} style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }} />
-    : <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--navy-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ fontFamily: 'Bebas Neue', fontSize: 15, color: 'var(--on-navy)' }}>{teamInitials(name)}</span></div>
 
   return (
     <div>
@@ -294,32 +297,12 @@ function PanelPartidos({ partidos, store }) {
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {nuestros.map((p) => {
-          const res = matchResult(p)
-          const color = res ? RESULT_COLORS[res] : '#aaa'
-          const { home, away } = matchSides(p, store.crestFor)
-          return (
-            <div key={p.id} style={{ position: 'relative', background: res ? `${color}0f` : 'white', border: `1px solid ${color}33`, borderLeft: `4px solid ${color}`, borderRadius: 14, padding: '16px 14px' }}>
-              <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                <button onClick={() => openEdit(p)} aria-label="Editar" style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>✏️</button>
-                <button onClick={() => del(p.id)} aria-label="Eliminar" style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>🗑️</button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <div style={{ flex: 1, textAlign: 'right', fontSize: 10, fontWeight: 700, color: home.ours ? 'var(--primary)' : 'var(--gris-mid)', textTransform: 'uppercase', lineHeight: 1.2 }}>{home.name}</div>
-                <Escudo src={home.crest} name={home.name} />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 78 }}>
-                  <span style={{ fontSize: 10, color: 'var(--gris-mid)', whiteSpace: 'nowrap' }}>{fmtCorta(p.fecha)} · {p.hora}</span>
-                  {p.jugado
-                    ? <span style={{ fontFamily: 'Bebas Neue', fontSize: 32, lineHeight: 1, color: 'var(--navy)' }}>{p.goles_local} - {p.goles_visitante}</span>
-                    : <span style={{ fontFamily: 'Bebas Neue', fontSize: 20, color: '#aaa' }}>vs</span>}
-                  <span style={{ background: 'var(--primary-pale)', color: 'var(--primary)', fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>{p.amistoso ? 'Amistoso' : `Jornada ${p.jornada}`}</span>
-                </div>
-                <Escudo src={away.crest} name={away.name} />
-                <div style={{ flex: 1, fontSize: 10, fontWeight: 700, color: away.ours ? 'var(--primary)' : 'var(--gris-mid)', textTransform: 'uppercase', lineHeight: 1.2 }}>{away.name}</div>
-              </div>
-            </div>
-          )
-        })}
+        {nuestros.map((p) => (
+          <ResultCard key={p.id} partido={p} showTime actions={<>
+            <button onClick={() => openEdit(p)} aria-label="Editar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>✏️</button>
+            <button onClick={() => del(p.id)} aria-label="Eliminar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>🗑️</button>
+          </>} />
+        ))}
       </div>
 
       {modal && (
@@ -383,6 +366,11 @@ function PanelPartidos({ partidos, store }) {
           <div className="form-group">
             <label className="label">Campo</label>
             <input className="input" value={form.campo} onChange={e => set('campo', e.target.value)} placeholder="Campo del rival" />
+          </div>
+
+          <div className="form-group">
+            <label className="label">Equipación <span style={{ fontWeight: 400, color: 'var(--gris-mid)', fontSize: 11 }}>(la camiseta con la que se pinta la alineación)</span></label>
+            <KitPicker value={form.equipacion} onChange={v => set('equipacion', v)} />
           </div>
 
           <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: fueraDeFecha ? 0.4 : 1 }}>
@@ -949,6 +937,9 @@ export default function Admin() {
           <div style={{ flex: 1 }}>
             <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--primary)', lineHeight: 1 }}>Panel de gestión</h1>
             <div style={{ fontSize: 12, color: 'var(--gris-mid)' }}>{CLUB.name} · {COMPETITION_LABEL} · {COMPETITION.season}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: SUPABASE_READY ? '#1f9d55' : '#b7791f' }}>
+              {SUPABASE_READY ? '● Conectado a Supabase' : '● Modo local: los datos solo se guardan en este navegador (faltan las variables de Supabase)'}
+            </div>
           </div>
           <button
             onClick={handleLogout}
