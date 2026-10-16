@@ -6,7 +6,7 @@
  * update the cache and notify subscribers (see hooks/useStore.js).
  */
 import { supabase, SUPABASE_READY } from './supabase'
-import { CLUB, COMPETITION, STORAGE_PREFIX } from '../config/club'
+import { CLUB, COMPETITION, STORAGE_PREFIX, DEFAULT_KIT } from '../config/club'
 import { computePlayerMinutes, statsFromEvents, startersFromLineup } from './timeline'
 import { computeStandings, ownMatchesAsResults } from './standings'
 
@@ -26,6 +26,13 @@ function save(k, val) {
 const nextId = (rows) => Math.max(0, ...rows.map((r) => Number(r.id) || 0)) + 1
 const matches = (row, where) => Object.entries(where).every(([k, v]) => row[k] === v)
 
+/** Wraps a Supabase/PostgREST error with a readable message (shown to admins). */
+function dbError(op, table, error) {
+  const e = new Error(`${error.message || 'Error de base de datos'}${error.code ? ` (${error.code})` : ''} — ${op} ${table}`)
+  e.cause = error
+  return e
+}
+
 /**
  * Tiny data adapter with the same API for Supabase and localStorage.
  * `where` is an equality filter object, e.g. { partido_id: 3 }.
@@ -44,7 +51,7 @@ const db = {
   async insert(table, row) {
     if (USE_SUPABASE) {
       const { data, error } = await supabase.from(table).insert(row).select().single()
-      if (error) throw error
+      if (error) throw dbError('insert', table, error)
       return data
     }
     const rows = load(table, [])
@@ -57,7 +64,7 @@ const db = {
       let q = supabase.from(table).update(patch)
       Object.entries(where).forEach(([k, v]) => { q = q.eq(k, v) })
       const { error } = await q
-      if (error) throw error
+      if (error) throw dbError('update', table, error)
       return
     }
     save(table, load(table, []).map((r) => (matches(r, where) ? { ...r, ...patch } : r)))
@@ -66,7 +73,7 @@ const db = {
     if (!rows.length) return []
     if (USE_SUPABASE) {
       const { data, error } = await supabase.from(table).upsert(rows, { onConflict: conflictKeys.join(',') }).select()
-      if (error) throw error
+      if (error) throw dbError('upsert', table, error)
       return data || []
     }
     let all = load(table, [])
@@ -92,7 +99,7 @@ const db = {
       let q = supabase.from(table).delete()
       Object.entries(where).forEach(([k, v]) => { q = q.eq(k, v) })
       const { error } = await q
-      if (error) throw error
+      if (error) throw dbError('delete', table, error)
       return
     }
     save(table, load(table, []).filter((r) => !matches(r, where)))
@@ -187,7 +194,7 @@ export const store = {
       db.select('partidos_liga', filtro),
     ])
     _jugadores = jugadores.map((j) => ({ ...j, estado: j.estado || 'disponible', estado_desc: j.estado_desc || null }))
-    _partidos = partidos.map((p) => ({ ...p, jugado: !!p.jugado, convocados: p.convocados || [] }))
+    _partidos = partidos.map((p) => ({ ...p, jugado: !!p.jugado, convocados: p.convocados || [], equipacion: p.equipacion || DEFAULT_KIT }))
     _stats = stats.map(normalizeStat)
     _equipos = sortEquipos(equipos)
     _partidosLiga = partidosLiga
@@ -261,7 +268,7 @@ export const store = {
 
   // ── Players ────────────────────────────────────────────────────────────────
   async addJugador(j) {
-    const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal, estado: 'disponible' })
+    const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible' })
     _jugadores = [..._jugadores, row]
     await log('➕ Añadió', 'Jugador', j.nombre)
     notify()
@@ -308,6 +315,7 @@ export const store = {
       amistoso: !!p.amistoso,
       escudo_rival_url: p.escudo_rival_url || null,
       convocados: [],
+      equipacion: p.equipacion || DEFAULT_KIT,
       temporada_id: tid(),
     })
     _partidos = [..._partidos, { ...row, convocados: row.convocados || [] }]
@@ -318,7 +326,7 @@ export const store = {
 
   async updatePartido(id, data) {
     const fields = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'campo', 'jugado', 'goles_local',
-      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id']
+      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id', 'equipacion']
     const patch = Object.fromEntries(fields.filter((f) => data[f] !== undefined).map((f) => [f, data[f]]))
     if (patch.hora === '') patch.hora = null
     const before = _partidos.find((x) => x.id === id)

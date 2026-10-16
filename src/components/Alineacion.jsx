@@ -36,7 +36,7 @@ function normalizar(alineacion) {
   return { formacion, slots: base.map((s, i) => ({ ...s, jugador_id: ids[i] ?? null })) }
 }
 
-function Campo({ slots, jugadores, formacion, onSlotClick, mvpId, badges = {} }) {
+function Campo({ slots, jugadores, formacion, onSlotClick, mvpId, badges = {}, kit }) {
   const lines = lineas(formacion)
   const get = (id) => jugadores.find((j) => j.id === id)
   return (
@@ -61,7 +61,7 @@ function Campo({ slots, jugadores, formacion, onSlotClick, mvpId, badges = {} })
             return (
               <div key={slot.posicion} onClick={click} style={{ cursor: click ? 'pointer' : 'default' }}>
                 {j ? (
-                  <Camiseta nombre={j.nombre} dorsal={j.dorsal} pequeña={n >= 4} destacado={j.id === mvpId} badge={badges[j.id]} />
+                  <Camiseta nombre={j.nombre} dorsal={j.dorsal} pequeña={n >= 4} destacado={j.id === mvpId} badge={badges[j.id]} kit={kit} />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: n >= 4 ? 58 : 68 }}>
                     <div style={{ width: n >= 4 ? 44 : 52, height: n >= 4 ? 40 : 46, border: '2px dashed rgba(255,255,255,0.45)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 20 }}>{onSlotClick ? '+' : '—'}</div>
@@ -77,7 +77,7 @@ function Campo({ slots, jugadores, formacion, onSlotClick, mvpId, badges = {} })
   )
 }
 
-function Editor({ inicial, jugadores, elegibles, onSave, onClose }) {
+function Editor({ inicial, jugadores, elegibles, onSave, onClose, kit }) {
   const [{ formacion, slots }, setState] = useState(() => normalizar(inicial))
   const [slotSel, setSlotSel] = useState(null)
   const [guardando, setGuardando] = useState(false)
@@ -109,7 +109,7 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose }) {
         ))}
       </div>
       {!elegibles?.length && <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginBottom: 10 }}>💡 Si guardas antes la convocatoria, aquí solo aparecerán los convocados.</p>}
-      <Campo slots={slots} jugadores={jugadores} formacion={formacion} onSlotClick={setSlotSel} />
+      <Campo slots={slots} jugadores={jugadores} formacion={formacion} onSlotClick={setSlotSel} kit={kit} />
       <div style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '8px 0 12px', textAlign: 'center' }}>{usados.size}/11 titulares · toca una posición para asignar</div>
       <button onClick={save} disabled={guardando} className="btn btn-primary btn-block">{guardando ? 'Guardando…' : 'Guardar alineación'}</button>
 
@@ -133,7 +133,7 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose }) {
   )
 }
 
-export default function Alineacion({ jugadores, alineacionInicial, onSave, modoEdicion = false, elegibles = [], mvpId = null, badges = {} }) {
+export default function Alineacion({ jugadores, alineacionInicial, onSave, modoEdicion = false, elegibles = [], mvpId = null, badges = {}, kit }) {
   const [abierto, setAbierto] = useState(false)
   const [actual, setActual] = useState(alineacionInicial)
   useEffect(() => { setActual(alineacionInicial) }, [alineacionInicial])
@@ -141,7 +141,7 @@ export default function Alineacion({ jugadores, alineacionInicial, onSave, modoE
 
   return (
     <div>
-      <Campo slots={slots} jugadores={jugadores} formacion={formacion} mvpId={mvpId} badges={badges} />
+      <Campo slots={slots} jugadores={jugadores} formacion={formacion} mvpId={mvpId} badges={badges} kit={kit} />
       {modoEdicion && (
         <button onClick={() => setAbierto(true)} className="btn btn-ghost btn-block" style={{ marginTop: 10 }}>✏️ Editar alineación</button>
       )}
@@ -152,6 +152,7 @@ export default function Alineacion({ jugadores, alineacionInicial, onSave, modoE
           elegibles={elegibles}
           onSave={onSave}
           onClose={(nuevo) => { if (nuevo) setActual(nuevo); setAbierto(false) }}
+          kit={kit}
         />
       )}
     </div>

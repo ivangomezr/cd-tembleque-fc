@@ -154,3 +154,26 @@ export function startersFromLineup(lineup) {
     .filter((id) => id != null)
     .map(Number)
 }
+
+/**
+ * Per-player event summary for OUR players, used for the little badges on the pitch
+ * and next to substitutes.
+ * @returns {Record<number, { goles, penaltis, propia, amarillas, roja, segunda }>}
+ */
+export function eventsByPlayer(events = []) {
+  const out = {}
+  const get = (id) => (out[id] ||= { goles: 0, penaltis: 0, propia: 0, amarillas: 0, roja: false, segunda: false })
+  for (const e of events) {
+    if (!e.jugador_id) continue
+    if (e.equipo === 'propio') {
+      if (e.tipo === 'gol') get(e.jugador_id).goles++
+      if (e.tipo === 'gol_penalti') { get(e.jugador_id).goles++; get(e.jugador_id).penaltis++ }
+      if (e.tipo === 'amarilla') get(e.jugador_id).amarillas++
+      if (e.tipo === 'segunda_amarilla') { get(e.jugador_id).amarillas++; get(e.jugador_id).segunda = true }
+      if (e.tipo === 'roja') get(e.jugador_id).roja = true
+    }
+    // our player scoring in our own net is stored on the rival side
+    if (e.equipo === 'rival' && e.tipo === 'gol_propia') get(e.jugador_id).propia++
+  }
+  return out
+}

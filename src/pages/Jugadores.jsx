@@ -95,15 +95,22 @@ export default function Jugadores() {
   const saveEdit = async () => {
     if (!form.nombre.trim()) return
     setSaving(true)
-    let foto_url = form.foto_url || null
-    if (fotoArchivo) {
-      foto_url = await store.subirFotoJugador(jugador.id, fotoArchivo)
+    try {
+      let foto_url = form.foto_url || null
+      if (fotoArchivo) {
+        foto_url = await store.subirFotoJugador(jugador.id, fotoArchivo)
+        if (!foto_url) throw new Error('No se pudo subir la foto. Revisa la configuración de Cloudinary.')
+      }
+      await store.updateJugador(jugador.id, { ...form, dorsal: Number(form.dorsal) || null, foto_url })
+      setFotoArchivo(null)
+      setFotoPreview(null)
+      setEditModal(false)
+    } catch (e) {
+      console.error('[jugadores] update failed', e)
+      window.alert(`No se pudo guardar el jugador: ${e?.message || e}`)
+    } finally {
+      setSaving(false)
     }
-    await store.updateJugador(jugador.id, { ...form, dorsal: Number(form.dorsal) || 0, foto_url })
-    setFotoArchivo(null)
-    setFotoPreview(null)
-    setEditModal(false)
-    setSaving(false)
   }
 
   return (
