@@ -3,21 +3,17 @@ import Sheet from './Sheet'
 import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal } from '../lib/timeline'
 import { CLUB } from '../config/club'
 import { haptics } from '../lib/haptics'
+import { GoalIcon, CardIcon } from './EventIcons'
 
-const Card = ({ color, second = false }) => (
-  <span style={{ position: 'relative', display: 'inline-block', width: 12, height: 16 }}>
-    {second && <span style={{ position: 'absolute', left: -3, top: -2, width: 11, height: 15, background: '#f0c040', borderRadius: 2, border: '1px solid rgba(0,0,0,.1)' }} />}
-    <span style={{ position: 'absolute', inset: 0, background: color, borderRadius: 2, boxShadow: '0 1px 2px rgba(0,0,0,.25)' }} />
-  </span>
-)
-
-function EventIcon({ tipo }) {
-  if (tipo === 'amarilla') return <Card color="#f0c040" />
-  if (tipo === 'roja') return <Card color="#d63a2f" />
-  if (tipo === 'segunda_amarilla') return <Card color="#d63a2f" second />
-  if (tipo === 'cambio') return <span style={{ fontSize: 15 }}>🔄</span>
-  if (tipo === 'penalti_fallado') return <span style={{ fontSize: 14 }}>❌</span>
-  return <span style={{ fontSize: 16 }}>⚽</span>
+function EventIcon({ tipo, size = 16 }) {
+  if (tipo === 'amarilla') return <CardIcon size={size} />
+  if (tipo === 'roja') return <CardIcon color="red" size={size} />
+  if (tipo === 'segunda_amarilla') return <CardIcon color="red" second size={size} />
+  if (tipo === 'cambio') return <span style={{ fontSize: size - 1 }}>🔄</span>
+  if (tipo === 'penalti_fallado') return <span style={{ fontSize: size - 2 }}>❌</span>
+  if (tipo === 'gol_penalti') return <GoalIcon variant="penalty" size={size} />
+  if (tipo === 'gol_propia') return <GoalIcon variant="own" size={size} />
+  return <GoalIcon size={size} />
 }
 
 /**
@@ -46,10 +42,14 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
       case 'gol_penalti':
         return {
           main: ours ? name(e.jugador_id) : e.nombre_rival || rival,
-          sub: e.tipo === 'gol_penalti' ? 'Penalti' : ours && e.jugador2_id ? `Asist. ${name(e.jugador2_id)}` : null,
+          sub: e.tipo === 'gol_penalti' ? 'De penalti' : ours && e.jugador2_id ? `Asist. ${name(e.jugador2_id)}` : null,
         }
       case 'gol_propia':
-        return { main: ours ? e.nombre_rival || 'Gol en propia' : name(e.jugador_id), sub: 'En propia puerta' }
+        return {
+          main: <span style={{ color: '#d63a2f' }}>{ours ? e.nombre_rival || 'Jugador rival' : name(e.jugador_id)}</span>,
+          sub: <span style={{ color: '#d63a2f', fontWeight: 600 }}>Gol en propia puerta</span>,
+          own: true,
+        }
       case 'penalti_fallado':
         return { main: ours ? name(e.jugador_id) : e.nombre_rival || rival, sub: 'Penalti fallado' }
       case 'cambio':
@@ -83,7 +83,7 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
           <div style={{ fontSize: 13, fontWeight: goal ? 700 : 600, color: 'var(--navy)', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{d.main}</div>
           {(d.sub || goal) && (
             <div style={{ fontSize: 11, color: 'var(--gris-mid)', lineHeight: 1.3, display: 'flex', gap: 6, alignItems: 'center', justifyContent: left ? 'flex-end' : 'flex-start', flexWrap: 'wrap' }}>
-              {goal && <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'white', background: 'var(--primary)', borderRadius: 5, padding: '0 6px', lineHeight: '17px' }}>{fmtScore(row)}</span>}
+              {goal && <span style={{ fontFamily: 'Bebas Neue', fontSize: 13, color: 'white', background: d.own ? '#d63a2f' : 'var(--primary)', borderRadius: 5, padding: '0 6px', lineHeight: '17px' }}>{fmtScore(row)}</span>}
               {d.sub && <span style={{ overflowWrap: 'anywhere' }}>{d.sub}</span>}
             </div>
           )}
@@ -99,8 +99,8 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
         <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
           <span style={{
             fontSize: 11, fontWeight: 800, minWidth: 36, textAlign: 'center', padding: '3px 4px', borderRadius: 20,
-            background: goal ? 'var(--navy)' : 'white', color: goal ? 'white' : 'var(--navy)',
-            border: `1.5px solid ${goal ? 'var(--navy)' : '#d6dfec'}`, zIndex: 1,
+            background: goal ? (d.own ? '#d63a2f' : 'var(--navy)') : 'white', color: goal ? 'white' : 'var(--navy)',
+            border: `1.5px solid ${goal ? (d.own ? '#d63a2f' : 'var(--navy)') : '#d6dfec'}`, zIndex: 1,
           }}>{minuteLabel(e)}</span>
         </div>
         <div>{!left && content}</div>
@@ -139,7 +139,8 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
 // ─────────────────────────────────────────────────────────────────────────────
 // Event editor
 // ─────────────────────────────────────────────────────────────────────────────
-const TIPOS_ORDEN = ['gol', 'gol_penalti', 'gol_propia', 'penalti_fallado', 'amarilla', 'segunda_amarilla', 'roja', 'cambio']
+const TIPOS_ORDEN = ['gol', 'gol_propia', 'penalti_fallado', 'cambio', 'amarilla', 'segunda_amarilla', 'roja']
+const TIPO_LABEL = { gol: 'Gol', gol_propia: 'Gol en propia', penalti_fallado: 'Penalti fallado', cambio: 'Cambio', amarilla: 'Amarilla', segunda_amarilla: '2ª amarilla', roja: 'Roja' }
 
 export function EventEditor({ evento, partido, jugadores, convocados, rival, store, onClose }) {
   const editing = !!evento?.id
@@ -219,18 +220,35 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
-        {TIPOS_ORDEN.map((t) => (
-          <button key={t} onClick={() => set('tipo', t)} style={{
-            padding: '8px 4px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, lineHeight: 1.2, minHeight: 56,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
-            border: `1.5px solid ${form.tipo === t ? 'var(--primary)' : '#e1e8f2'}`,
-            background: form.tipo === t ? 'var(--primary-pale)' : 'white', color: form.tipo === t ? 'var(--primary)' : 'var(--gris-dark)',
-          }}>
-            <EventIcon tipo={t} />
-            {EVENT_TYPES[t].label}
-          </button>
-        ))}
+        {TIPOS_ORDEN.map((t) => {
+          const active = form.tipo === t || (t === 'gol' && form.tipo === 'gol_penalti')
+          return (
+            <button key={t} onClick={() => set('tipo', t === 'gol' && form.tipo === 'gol_penalti' ? 'gol_penalti' : t)} style={{
+              padding: '8px 4px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, lineHeight: 1.2, minHeight: 56,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+              border: `1.5px solid ${active ? 'var(--primary)' : '#e1e8f2'}`,
+              background: active ? 'var(--primary-pale)' : 'white', color: active ? 'var(--primary)' : 'var(--gris-dark)',
+            }}>
+              <EventIcon tipo={t} />
+              {TIPO_LABEL[t]}
+            </button>
+          )
+        })}
       </div>
+
+      {(form.tipo === 'gol' || form.tipo === 'gol_penalti') && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 14, borderRadius: 10, cursor: 'pointer',
+          background: form.tipo === 'gol_penalti' ? 'var(--primary-pale)' : '#f7f9fc', border: `1.5px solid ${form.tipo === 'gol_penalti' ? 'var(--primary)' : '#e1e8f2'}` }}>
+          <input type="checkbox" checked={form.tipo === 'gol_penalti'} onChange={(e) => set('tipo', e.target.checked ? 'gol_penalti' : 'gol')} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+          <GoalIcon variant="penalty" size={16} />
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Ha sido de penalti</span>
+        </label>
+      )}
+      {form.tipo === 'gol_propia' && (
+        <p style={{ fontSize: 12, color: '#d63a2f', margin: '-4px 0 14px', lineHeight: 1.4 }}>
+          {ours ? 'Un jugador rival marca en su propia portería: gol a nuestro favor.' : 'Uno de nuestros jugadores marca en nuestra portería: gol para el rival.'}
+        </p>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
         <div className="form-group">

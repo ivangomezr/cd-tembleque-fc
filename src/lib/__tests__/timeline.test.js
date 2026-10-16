@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePlayerMinutes, statsFromEvents, scoreFromEvents, sortEvents, startersFromLineup } from '../timeline'
+import { computePlayerMinutes, statsFromEvents, scoreFromEvents, sortEvents, startersFromLineup, eventsByPlayer } from '../timeline'
 
 const XI = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 const GK = (id) => id === 1 || id === 12
@@ -102,5 +102,20 @@ describe('helpers', () => {
   it('reads starters from lineup slots', () => {
     expect(startersFromLineup({ jugadores: [{ jugador_id: 3 }, { jugador_id: null }, 5] })).toEqual([3, 5])
     expect(startersFromLineup(null)).toEqual([])
+  })
+})
+
+describe('eventsByPlayer', () => {
+  it('summarises goals, penalties, own goals and cards for badges', () => {
+    const b = eventsByPlayer([
+      { tipo: 'gol', equipo: 'propio', jugador_id: 9 },
+      { tipo: 'gol_penalti', equipo: 'propio', jugador_id: 9 },
+      { tipo: 'gol_propia', equipo: 'rival', jugador_id: 4 },
+      { tipo: 'amarilla', equipo: 'propio', jugador_id: 4 },
+      { tipo: 'segunda_amarilla', equipo: 'propio', jugador_id: 4 },
+      { tipo: 'amarilla', equipo: 'rival', nombre_rival: 'Dorsal 3' },
+    ])
+    expect(b[9]).toMatchObject({ goles: 2, penaltis: 1, propia: 0 })
+    expect(b[4]).toMatchObject({ propia: 1, amarillas: 2, segunda: true })
   })
 })

@@ -23,6 +23,33 @@ export const COMPETITION = {
 export const COMPETITION_LABEL = `${COMPETITION.name} · ${COMPETITION.group}`
 export const COMPETITION_FULL = `${COMPETITION.name} CLM · ${COMPETITION.group} · ${COMPETITION.season}`
 
+/**
+ * Club kits. `equipacion` on each match stores one of these keys.
+ * Colours sampled from the 2026/27 shirts.
+ */
+export const KITS = {
+  local: {
+    label: 'Local',
+    description: 'Azul',
+    body: ['#0a56c8', '#0042a6'],        // top → bottom
+    trim: '#ffffff',
+    number: '#ffffff',
+    numberStroke: '#01153A',
+    pattern: 'slashes',                  // white diagonal lines, lower right
+  },
+  visitante: {
+    label: 'Visitante',
+    description: 'Rosa',
+    body: ['#f3005a', '#f3005a', '#b3168c', '#3f6fd8'], // left → right gradient
+    bodyDirection: 'horizontal',
+    trim: '#ffffff',
+    number: '#ffffff',
+    numberStroke: '#9a0040',
+    pattern: null,
+  },
+}
+export const DEFAULT_KIT = 'local'
+
 /** Prefix for every localStorage key (avoids clashes with other apps on localhost). */
 export const STORAGE_PREFIX = 'cdt_'
 
