@@ -4,8 +4,8 @@
 
 | Role | How you get it | Can |
 | --- | --- | --- |
-| `visitante` | No session (or a session without profile) | Read public data: matches, table, squad, stats, timeline, votes |
-| `jugador` | Account linked to a row of `jugadores` | Everything above + vote MVP **as himself**, only in played matches |
+| `visitante` | No session (or a session without profile) | Read public data: matches, table, squad, stats, timeline, MVP totals |
+| `jugador` | Account linked to a row of `jugadores` | Everything above + vote MVP **as himself**, only in played matches, for a teammate who took part; see private player notes |
 | `admin` | Assigned from a trusted context | Manage matches, timeline, lineups, stats, squad, league, sponsors, season settings |
 | `superadmin` | Assigned from a trusted context | Admin + create/close seasons + read the activity log |
 

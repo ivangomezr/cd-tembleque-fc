@@ -113,7 +113,12 @@ supabase/
 - Tests: `npm test` (client auth, roles, expiry, sign-out) and `npm run test:db`
   (pgTAP RLS tests in `supabase/tests`).
 
-Details, setup and migration: [docs/auth.md](docs/auth.md).
+- **Least privilege**: visitors can only read public data; the anon key cannot write anything.
+  Private player notes live in `jugadores_privado` (members only) and MVP votes are a secret
+  ballot (public totals through `mvp_ranking`). No `service_role` key in the frontend.
+
+Details, setup and migration: [docs/auth.md](docs/auth.md). Database audit, permission matrix
+and how to verify migrations on staging first: [docs/database-security.md](docs/database-security.md).
 
 ## Contributing
 

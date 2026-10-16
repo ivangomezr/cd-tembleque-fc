@@ -19,9 +19,9 @@ insert into auth.users (id, email) values
 insert into public.temporadas (id, nombre, "año", activa) values (900, 'Test', 2099, false);
 insert into public.jugadores (id, nombre, posicion, dorsal) values
   (901, 'Uno', 'Portero', 1), (902, 'Dos', 'Defensa', 2), (903, 'Tres', 'Delantero', 9);
-insert into public.partidos (id, temporada_id, jornada, fecha, local, visitante, jugado) values
-  (910, 900, 1, '2099-01-01', 'A', 'B', true),
-  (911, 900, 2, '2099-01-08', 'A', 'C', false);
+insert into public.partidos (id, temporada_id, jornada, fecha, local, visitante, jugado, convocados) values
+  (910, 900, 1, '2099-01-01', 'A', 'B', true, '[901, 902, 903]'),
+  (911, 900, 2, '2099-01-08', 'A', 'C', false, '[]');
 
 select public.asignar_rol('00000000-0000-0000-0000-0000000000a1', 'admin');
 select public.asignar_rol('00000000-0000-0000-0000-0000000000a2', 'superadmin');
@@ -39,11 +39,11 @@ set local role anon;
 select pg_temp.como(null);
 
 select ok((select count(*) from public.partidos where id in (910, 911)) = 2, 'visitante: lee partidos');
-select ok((select count(*) from public.jugadores where id >= 901) = 3, 'visitante: lee la plantilla');
+select ok((select count(id) from public.jugadores where id >= 901) = 3, 'visitante: lee la plantilla');
 select throws_ok($$ insert into public.partidos (jornada, fecha, local, visitante) values (3, '2099-02-01', 'X', 'Y') $$,
   '42501', null, 'visitante: no puede crear partidos');
-select is((select count(*)::int from public.perfiles), 0, 'visitante: no ve perfiles');
-select is((select count(*)::int from public.activity_log), 0, 'visitante: no lee el log');
+select throws_ok($$ select * from public.perfiles $$, '42501', null, 'visitante: no ve perfiles');
+select throws_ok($$ select * from public.activity_log $$, '42501', null, 'visitante: no lee el log');
 select throws_ok($$ select public.asignar_rol('00000000-0000-0000-0000-0000000000c1', 'superadmin') $$,
   '42501', null, 'visitante: no puede asignar roles');
 

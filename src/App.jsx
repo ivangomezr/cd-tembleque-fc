@@ -109,6 +109,12 @@ export default function App() {
   const auth = useAuth()
   // Local (no-Supabase) activity log only; with Supabase the server sets the actor
   setActorProvider(() => (auth.session ? { jugador_id: auth.jugadorId, nombre: auth.profile?.nombre || auth.session.user?.email } : null))
+  // Members-only player details (injury notes…) are fetched once the role is known
+  useEffect(() => {
+    if (auth.status !== 'ready') return
+    if (auth.role !== 'visitante') store.loadJugadoresPrivado()
+    else store.clearJugadoresPrivado()
+  }, [auth.status, auth.role])
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
