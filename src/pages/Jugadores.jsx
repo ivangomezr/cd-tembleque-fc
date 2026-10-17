@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../hooks/useStore'
 import { playerTotals, fmtMin } from '../lib/playerTotals'
-import { adminAuth } from '../lib/adminAuth'
+import { useAuth } from '../hooks/useAuth'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
 function Avatar({ jugador, size = 'sm' }) {
@@ -50,7 +50,7 @@ const statTabs = [
 
 export default function Jugadores() {
   const { jugadores, stats, partidos, store } = useStore()
-  const isAdmin = adminAuth.isLogged()
+  const { isAdmin } = useAuth()
 
   const [vista, setVista] = useState('plantilla')
   const [filtro, setFiltro] = useState('Todos')

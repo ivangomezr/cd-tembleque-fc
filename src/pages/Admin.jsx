@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
-import { adminAuth } from '../lib/adminAuth'
+import { useAuth } from '../hooks/useAuth'
 import { CLUB, COMPETITION_LABEL, COMPETITION, DEFAULT_KIT } from '../config/club'
 import KitPicker from '../components/KitPicker'
 import { ResultCard } from '../components/MatchCard'
@@ -27,16 +27,21 @@ function Avatar({ jugador, size = 'sm' }) {
 }
 const POSICIONES = ['Portero', 'Defensa', 'Centrocampista', 'Delantero']
 
-// Guard: si alguien navega a /admin directamente sin estar logueado, redirige a inicio
+// Guard: only admins see the panel. This is UX only — every write is checked
+// again by the database (RLS policies on each table).
 function AdminGuard({ children }) {
   const navigate = useNavigate()
-  if (!adminAuth.isLogged()) {
+  const { loading, isAdmin, isLogged } = useAuth()
+  if (loading) return <div className="page"><div className="empty">Comprobando sesión…</div></div>
+  if (!isAdmin) {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: '1rem' }}>🔒</div>
         <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--primary)', marginBottom: 8 }}>Acceso restringido</h2>
-        <p style={{ color: 'var(--gris-mid)', marginBottom: '1.25rem', maxWidth: 280 }}>
-          Pulsa el botón <strong>"🔒 Acceso equipo"</strong> en la barra superior para identificarte.
+        <p style={{ color: 'var(--gris-mid)', marginBottom: '1.25rem', maxWidth: 300 }}>
+          {isLogged
+            ? 'Tu cuenta no tiene permisos de administración. Si crees que es un error, habla con el superadministrador.'
+            : <>Abre el menú ☰ y pulsa <strong>"🔒 Acceso al equipo"</strong> para identificarte.</>}
         </p>
         <button className="btn btn-primary" onClick={() => navigate('/')}>Volver al inicio</button>
       </div>
@@ -574,6 +579,7 @@ function PanelStats({ jugadores, partidos, stats, store }) {
 
 // ---- Panel Temporada ----
 function PanelTemporada({ store }) {
+  const { isSuperAdmin } = useAuth()
   const [temporadaActiva, setTemporadaActiva] = useState(null)
   const [temporadas, setTemporadas] = useState([])
   const [showForm, setShowForm] = useState(false)
@@ -581,7 +587,6 @@ function PanelTemporada({ store }) {
   const [cerrando, setCerrando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [pwdSuper, setPwdSuper] = useState('')
-  const [showPwdSuper, setShowPwdSuper] = useState(false)
   const [errorPwd, setErrorPwd] = useState('')
 
   useEffect(() => {
@@ -593,13 +598,17 @@ function PanelTemporada({ store }) {
   }, [])
 
   const verificarYCerrar = async () => {
-    // Si es superadmin por contraseña, no necesita verificar de nuevo
-    if (!adminAuth.isSuperAdmin()) {
-      if (!(await adminAuth.verifyAdmin(pwdSuper))) { setErrorPwd('Contraseña incorrecta'); return }
-    }
+    if (!isSuperAdmin) return
     if (!form.nombre.trim()) { alert('Pon nombre a la nueva temporada'); return }
+    if (pwdSuper.trim().toUpperCase() !== 'CERRAR') { setErrorPwd('Escribe CERRAR para confirmar'); return }
     setCerrando(true)
-    await store.cerrarTemporadaYCrearNueva(form.nombre.trim(), Number(form.año))
+    try {
+      await store.cerrarTemporadaYCrearNueva(form.nombre.trim(), Number(form.año))
+    } catch (e) {
+      setErrorPwd(e.message || 'No se pudo cerrar la temporada')
+      setCerrando(false)
+      return
+    }
     const ts = await store.getTemporadas()
     setTemporadas(ts)
     setTemporadaActiva(ts.find(t => t.activa) || null)
@@ -614,7 +623,7 @@ function PanelTemporada({ store }) {
         <div style={{ fontSize: 12, color: '#6f8db8', marginTop: 4 }}>Año {temporadaActiva?.año} · Todos los datos actuales pertenecen a esta temporada</div>
       </div>
 
-      {!adminAuth.isSuperAdmin() ? (
+      {!isSuperAdmin ? (
         <div style={{ background: '#f3f6fb', borderRadius: 12, padding: '1rem', marginBottom: '1.5rem', textAlign: 'center' }}>
           <div style={{ fontSize: 20, marginBottom: 6 }}>🔐</div>
           <div style={{ fontSize: 13, color: 'var(--gris-mid)' }}>Solo el superadmin puede cerrar la temporada</div>
@@ -646,22 +655,12 @@ function PanelTemporada({ store }) {
               <div style={{ background: '#fde8e8', border: '1px solid #f5c0c0', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#c0392b' }}>
                 ⚠️ <strong>Atención:</strong> Al cerrar <strong>"{temporadaActiva?.nombre}"</strong>, los partidos, estadísticas y clasificación quedarán archivados. Los jugadores se mantienen. Esta acción no se puede deshacer.
               </div>
-              {!adminAuth.isSuperAdmin() && (
-                <div className="form-group">
-                  <label className="label">🔐 Contraseña de superadmin</label>
-                  <div style={{ position: 'relative' }}>
-                    <input className="input" type={showPwdSuper ? 'text' : 'password'}
-                      placeholder="Solo el creador de la app puede hacer esto"
-                      value={pwdSuper} onChange={e => { setPwdSuper(e.target.value); setErrorPwd('') }}
-                      style={{ paddingRight: 48 }} />
-                    <button type="button" onClick={() => setShowPwdSuper(v => !v)}
-                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--gris-mid)' }}>
-                      {showPwdSuper ? '🙈' : '👁️'}
-                    </button>
-                  </div>
-                  {errorPwd && <div style={{ color: '#c0392b', fontSize: 12, marginTop: 4 }}>⚠️ {errorPwd}</div>}
-                </div>
-              )}
+              <div className="form-group">
+                <label className="label">Escribe <strong>CERRAR</strong> para confirmar</label>
+                <input className="input" value={pwdSuper} autoCapitalize="characters"
+                  onChange={e => { setPwdSuper(e.target.value); setErrorPwd('') }} placeholder="CERRAR" />
+                {errorPwd && <div style={{ color: '#c0392b', fontSize: 12, marginTop: 4 }}>⚠️ {errorPwd}</div>}
+              </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setConfirmando(false); setPwdSuper(''); setErrorPwd('') }} className="btn btn-ghost" style={{ flex: 1 }}>Atrás</button>
                 <button onClick={verificarYCerrar} disabled={cerrando || !pwdSuper} style={{ flex: 1, background: '#c0392b', color: 'white', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: 'pointer', opacity: (cerrando || !pwdSuper) ? 0.5 : 1 }}>
@@ -692,42 +691,26 @@ function PanelTemporada({ store }) {
 
 // ---- Panel Log ----
 function PanelLog({ store, jugadores }) {
-  const esSuperAdmin = adminAuth.isSuperAdmin()
-  const [desbloqueado, setDesbloqueado] = useState(esSuperAdmin)
-  const [pwdInput, setPwdInput] = useState('')
-  const [errorPwd, setErrorPwd] = useState('')
-  const [showPwd, setShowPwd] = useState(false)
+  const { isSuperAdmin } = useAuth()
   const [logs, setLogs] = useState([])
   const [cargando, setCargando] = useState(false)
   const [filtroJugador, setFiltroJugador] = useState('')
   const [filtroFecha, setFiltroFecha] = useState('')
 
   useEffect(() => {
-    if (esSuperAdmin) {
-      setCargando(true)
-      store.getLog()
-        .then(data => { setLogs(data || []); setCargando(false) })
-        .catch(() => setCargando(false))
-    }
-  }, [])
-
-  const verificar = async () => {
-    if (!(await adminAuth.verifyAdmin(pwdInput))) {
-      setErrorPwd('Contraseña incorrecta')
-      return
-    }
-    setDesbloqueado(true)
+    if (!isSuperAdmin) return
     setCargando(true)
     store.getLog()
       .then(data => { setLogs(data || []); setCargando(false) })
       .catch(() => setCargando(false))
-  }
+  }, [isSuperAdmin])
 
-  if (!desbloqueado) return (
+  // The database only returns rows to superadmins (RLS); this is just the message.
+  if (!isSuperAdmin) return (
     <div className="card" style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 40, marginBottom: 12 }}>🔐</div>
       <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', marginBottom: 6 }}>Área restringida</div>
-      <div style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 20 }}>Solo el superadmin puede ver el log de actividad</div>
+      <div style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 20 }}>Solo el superadministrador puede ver el registro de actividad</div>
     </div>
   )
 
@@ -923,8 +906,9 @@ export default function Admin() {
   }, [location.search])
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    adminAuth.logout()
+  const { signOut, role } = useAuth()
+  const handleLogout = async () => {
+    await signOut()
     navigate('/')
   }
 
@@ -938,7 +922,7 @@ export default function Admin() {
             <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--primary)', lineHeight: 1 }}>Panel de gestión</h1>
             <div style={{ fontSize: 12, color: 'var(--gris-mid)' }}>{CLUB.name} · {COMPETITION_LABEL} · {COMPETITION.season}</div>
             <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: SUPABASE_READY ? '#1f9d55' : '#b7791f' }}>
-              {SUPABASE_READY ? '● Conectado a Supabase' : '● Modo local: los datos solo se guardan en este navegador (faltan las variables de Supabase)'}
+              {SUPABASE_READY ? `● Conectado a Supabase · rol ${role}` : '● Modo local: los datos solo se guardan en este navegador (faltan las variables de Supabase)'}
             </div>
           </div>
           <button

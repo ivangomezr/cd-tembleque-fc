@@ -55,8 +55,8 @@ Without Supabase variables the app runs in **local mode** and stores everything 
    - **CLI**: `npx supabase link --project-ref <ref>` then `npx supabase db push`, or
    - **Dashboard**: paste `supabase/migrations/20261016000000_init.sql` into the SQL Editor.
 3. Run `supabase/seed.sql` once (creates the active season and the club as a league team).
-4. Give each player a personal password from the SQL Editor:
-   `select asignar_clave_jugador(<player_id>, '<password>');`
+4. Configure Auth and create the accounts (superadmin, admins, one per player) — see
+   **[docs/auth.md](docs/auth.md)**.
 5. Copy the project URL and anon key into `.env.local`.
 
 ## Deploying to Vercel
@@ -74,17 +74,15 @@ The SPA rewrite and cache headers are in `vercel.json`.
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | yes | Supabase anon (public) key |
-| `VITE_ADMIN_PASSWORD_HASH` | yes | SHA-256 hex of the admin password |
+| `VITE_PLAYER_LOGIN_DOMAIN` | no | Domain of the synthetic player logins (default `jugadores.cdtembleque.app`) |
+| `VITE_AUTH_STORAGE` | no | `local` (default) or `session` — where supabase-js keeps the session |
 | `VITE_CLOUDINARY_CLOUD_NAME` | no | Image uploads (photos, crests) |
 | `VITE_CLOUDINARY_UPLOAD_PRESET` | no | Unsigned upload preset |
 | `VITE_VAPID_PUBLIC_KEY` | no | Web push |
 | `VITE_PUSH_SECRET` | no | Shared secret for the `send-push` edge function |
 
-Generate the admin hash:
-
-```bash
-node -e "console.log(require('crypto').createHash('sha256').update('YOUR_PASSWORD').digest('hex'))"
-```
+The service-role key is used **only** by `scripts/auth-admin.mjs` on a trusted machine,
+from `scripts/.env.admin` (git-ignored). It never goes to Vercel or into a `VITE_` variable.
 
 ## Project structure
 
@@ -105,10 +103,22 @@ supabase/
 
 ## Security
 
-The app keeps the original lightweight model: the admin password and player passwords only
-gate the UI, and the anon key can write to the database (RLS policies are permissive).
-Anyone who reads the bundle can call the API directly. Before going public, move to
-**Supabase Auth** and restrict write policies to `authenticated` users.
+- **Authentication**: Supabase Auth (email + password for staff, name + PIN for players).
+  Sessions are short-lived JWTs renewed with rotating refresh tokens.
+- **Authorisation**: roles (`visitante`, `jugador`, `admin`, `superadmin`) live in
+  `public.perfiles` and are enforced by Row Level Security on every table. Hiding buttons in
+  React is only a convenience — the database rejects anything the role is not allowed to do.
+- **Role assignment** happens only from trusted contexts (SQL editor or `scripts/auth-admin.mjs`
+  with the service-role key). The client has no write access to `perfiles`.
+- Tests: `npm test` (client auth, roles, expiry, sign-out) and `npm run test:db`
+  (pgTAP RLS tests in `supabase/tests`).
+
+- **Least privilege**: visitors can only read public data; the anon key cannot write anything.
+  Private player notes live in `jugadores_privado` (members only) and MVP votes are a secret
+  ballot (public totals through `mvp_ranking`). No `service_role` key in the frontend.
+
+Details, setup and migration: [docs/auth.md](docs/auth.md). Database audit, permission matrix
+and how to verify migrations on staging first: [docs/database-security.md](docs/database-security.md).
 
 ## Contributing
 
