@@ -10,6 +10,7 @@ import { store } from './lib/store'
 import Inicio from './pages/Inicio'
 import Clasificacion from './pages/Clasificacion'
 import Jugadores from './pages/Jugadores'
+import JugadorDetalle from './pages/JugadorDetalle'
 import Partidos from './pages/Partidos'
 import DetallePartido from './pages/DetallePartido'
 import Estadisticas from './pages/Estadisticas'
@@ -143,6 +144,7 @@ export default function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/clasificacion" element={<Clasificacion />} />
         <Route path="/jugadores" element={<Jugadores />} />
+        <Route path="/jugadores/:id" element={<JugadorDetalle />} />
         <Route path="/partidos" element={<Partidos />} />
         <Route path="/partido/:id" element={<DetallePartido />} />
         <Route path="/estadisticas" element={<Estadisticas />} />

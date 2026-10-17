@@ -337,7 +337,8 @@ export const store = {
     notify()
   },
   async subirFotoJugador(_jugador_id, archivo) {
-    return store.uploadToCloudinary(archivo, 'tembleque/avatares', { maxWidth: 400, maxHeight: 400, quality: 0.75 })
+    // Portrait size for the squad cards and the player page
+    return store.uploadToCloudinary(archivo, 'tembleque/avatares', { maxWidth: 720, maxHeight: 960, quality: 0.8 })
   },
 
   // ── Our matches ────────────────────────────────────────────────────────────

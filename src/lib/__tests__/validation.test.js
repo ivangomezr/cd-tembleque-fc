@@ -7,6 +7,7 @@ import {
   limitesMinuto, urlOk, FORMACIONES_VALIDAS, ESTADOS_JUGADOR, POSICIONES,
 } from '../validation'
 import { timelineIssue } from '../timeline'
+import { ESTADOS, POSICIONES as POSICIONES_UI } from '../players'
 
 /** Message of the error thrown by fn, or null when it does not throw. */
 const err = (fn) => { try { fn() } catch (e) { return e.message } return null }
@@ -337,17 +338,15 @@ describe('votos MVP', () => {
 describe('las listas coinciden con la base de datos y la interfaz', () => {
   const migration = readFileSync(join(process.cwd(), 'supabase/migrations/20261017180000_data_integrity.sql'), 'utf8')
   const lineupUi = readFileSync(join(process.cwd(), 'src/components/Alineacion.jsx'), 'utf8')
-  const squadUi = readFileSync(join(process.cwd(), 'src/pages/Jugadores.jsx'), 'utf8')
   it('formaciones', () => {
     const ui = [...lineupUi.matchAll(/^\s+'(\d(?:-\d)+)': \[/gm)].map((m) => m[1])
     expect(ui).toEqual(FORMACIONES_VALIDAS)
     for (const f of FORMACIONES_VALIDAS) expect(migration.includes(`'${f}'`)).toBe(true)
   })
   it('estados y posiciones', () => {
-    for (const e of ESTADOS_JUGADOR) {
-      expect(migration.includes(`'${e}'`)).toBe(true)
-      expect(new RegExp(`\\b${e}: \\{`).test(squadUi)).toBe(true)
-    }
+    for (const e of ESTADOS_JUGADOR) expect(migration.includes(`'${e}'`)).toBe(true)
+    expect(Object.keys(ESTADOS)).toEqual(ESTADOS_JUGADOR)
+    expect(POSICIONES_UI).toEqual(POSICIONES)
     expect(POSICIONES).toEqual(['Portero', 'Defensa', 'Centrocampista', 'Delantero'])
   })
 })
