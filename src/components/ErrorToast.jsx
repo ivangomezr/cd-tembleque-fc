@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { messageFor } from '../lib/dbErrors'
 
 /**
  * Shows any unhandled async error (e.g. a failed Supabase write) instead of
@@ -11,7 +12,8 @@ export default function ErrorToast() {
     let t
     const onError = (e) => {
       const reason = e.reason ?? e.error
-      const text = reason?.message || String(reason || 'Error desconocido')
+      // Only messages written for users are shown; anything else stays in the console
+      const text = messageFor(reason)
       console.error('[unhandled]', reason)
       setMsg(text)
       clearTimeout(t)
@@ -28,7 +30,7 @@ export default function ErrorToast() {
       maxWidth: 656, margin: '0 auto', background: 'var(--danger)', color: 'white', borderRadius: 12,
       padding: '10px 14px', fontSize: 13, boxShadow: '0 6px 24px rgba(0,0,0,.25)', cursor: 'pointer',
     }}>
-      ⚠️ No se pudo guardar: {msg}
+      ⚠️ {msg}
     </div>
   )
 }

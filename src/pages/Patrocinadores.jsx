@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../hooks/useStore'
 import { useAuth } from '../hooks/useAuth'
+import { messageFor } from '../lib/dbErrors'
 
 export default function Patrocinadores() {
     const { store } = useStore()
@@ -32,7 +33,7 @@ export default function Patrocinadores() {
             const nuevo = await store.addPatrocinador(nombre.trim(), archivo)
             setLista(prev => [...prev, nuevo])
             setNombre(''); setArchivo(null); setPreview(null); setShowForm(false)
-        } catch { setError('Error al guardar. Inténtalo de nuevo.') }
+        } catch (e) { setError(messageFor(e)) }
         setSaving(false)
     }
 

@@ -4,6 +4,8 @@ import { useStandings } from '../../hooks/useStandings'
 import { haptics } from '../../lib/haptics'
 import TeamCrest from '../../components/TeamCrest'
 import Sheet from '../../components/Sheet'
+import { validarPartidoLiga, validarEquipo, validarTemporada, debeMarcarseJugado, LIMITS } from '../../lib/validation'
+import { messageFor } from '../../lib/dbErrors'
 
 const SECTIONS = [
   { key: 'resultados', label: '📅 Jornadas' },
@@ -31,7 +33,7 @@ export default function PanelLiga() {
 // Results per matchday
 // ─────────────────────────────────────────────────────────────────────────────
 function Resultados() {
-  const { store } = useStore()
+  const { store, partidos, partidosLiga, temporada } = useStore()
   const { results, equipos } = useStandings()
   const totalJornadas = Math.max(2 * (equipos.length - 1), 1)
   const maxConDatos = Math.max(0, ...results.map((r) => r.jornada || 0))
@@ -39,6 +41,7 @@ function Resultados() {
   const [jornada, setJornada] = useState(Math.max(1, ultimaJugada || 1))
   const [edit, setEdit] = useState(null) // { mode, data }
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const team = (id) => equipos.find((e) => e.id === id)
   const deJornada = results.filter((r) => r.jornada === jornada)
@@ -49,25 +52,47 @@ function Resultados() {
     setError('')
     setEdit({ mode: 'add', data: { jornada, fecha: '', local_id: '', visitante_id: '', goles_local: 0, goles_visitante: 0, jugado: false } })
   }
-  const openEdit = (r) => { setError(''); setEdit({ mode: 'edit', id: r.id, data: { ...r } }) }
+  const openEdit = (r) => {
+    setError('')
+    // A past fixture still pending is ticked as played automatically (the admin then fills in the score)
+    const auto = debeMarcarseJugado(r)
+    setEdit({ mode: 'edit', id: r.id, auto, data: { ...r, jugado: r.jugado || auto } })
+  }
 
   const save = async () => {
     const d = edit.data
-    if (!d.local_id || !d.visitante_id) return setError('Elige los dos equipos.')
-    if (Number(d.local_id) === Number(d.visitante_id)) return setError('Un equipo no puede jugar contra sí mismo.')
-    const own = equipos.find((e) => e.es_propio)?.id
-    if ([Number(d.local_id), Number(d.visitante_id)].includes(own)) {
-      return setError('Los partidos del CD Tembleque se gestionan en la pestaña ⚽ Partidos.')
+    try {
+      // Same rules as the database (validation.js ↔ migration 20261017180000)
+      validarPartidoLiga(d, { partidosLiga, partidos, equipos, temporada, id: edit.id ?? null })
+    } catch (e) { haptics.error?.(); return setError(messageFor(e)) }
+    if (edit.auto && d.jugado && !edit.marcador &&
+        !window.confirm(`Se ha marcado como jugado porque la fecha ya pasó. ¿Guardar con el resultado ${Number(d.goles_local) || 0}-${Number(d.goles_visitante) || 0}?`)) return
+    setSaving(true)
+    try {
+      if (edit.mode === 'add') await store.addPartidoLiga(d)
+      else await store.updatePartidoLiga(edit.id, d)
+      haptics.success?.()
+      setEdit(null)
+    } catch (e) {
+      haptics.error?.()
+      setError(messageFor(e))
+    } finally {
+      setSaving(false)
     }
-    const dup = deJornada.find((r) => r.id !== edit.id && [r.local_id, r.visitante_id].some((x) => [Number(d.local_id), Number(d.visitante_id)].includes(x)))
-    if (dup) return setError(`Uno de los equipos ya juega en la jornada ${d.jornada}.`)
-    if (edit.mode === 'add') await store.addPartidoLiga(d)
-    else await store.updatePartidoLiga(edit.id, d)
-    haptics.success?.()
-    setEdit(null)
   }
 
-  const set = (k, v) => setEdit((e) => ({ ...e, data: { ...e.data, [k]: v } }))
+  const set = (k, v) => {
+    setError('')
+    setEdit((e) => {
+      const data = { ...e.data, [k]: v }
+      let { auto, marcador } = e
+      if (k === 'jugado') auto = false
+      if (k === 'goles_local' || k === 'goles_visitante') marcador = true
+      // Picking a date that has already passed ticks "played" (unless the admin already decided)
+      if (k === 'fecha' && !e.tocado && !e.data.jugado && debeMarcarseJugado({ fecha: v, jugado: false })) { data.jugado = true; auto = true }
+      return { ...e, data, auto, marcador, tocado: e.tocado || k === 'jugado' }
+    })
+  }
 
   if (equipos.length < 2) {
     return <div className="empty">Añade primero los equipos del grupo en <strong>🛡️ Equipos</strong>.</div>
@@ -130,21 +155,26 @@ function Resultados() {
             <input id="jugado-liga" type="checkbox" checked={!!edit.data.jugado} onChange={(e) => set('jugado', e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
             <label htmlFor="jugado-liga" className="label" style={{ margin: 0 }}>Partido jugado</label>
           </div>
+          {edit.auto && edit.data.jugado && (
+            <p style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
+              ✓ Marcado automáticamente porque la fecha ya pasó. Indica el resultado.
+            </p>
+          )}
           {edit.data.jugado && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               {[['goles_local', 'Goles local'], ['goles_visitante', 'Goles visitante']].map(([k, l]) => (
                 <div key={k}>
                   <label className="label">{l}</label>
-                  <input className="input" type="number" min="0" inputMode="numeric" value={edit.data[k]} onChange={(e) => set(k, e.target.value)} style={{ textAlign: 'center', fontFamily: 'Bebas Neue', fontSize: 24 }} />
+                  <input className="input" type="number" min="0" max={LIMITS.goles} step="1" inputMode="numeric" value={edit.data[k]} onChange={(e) => set(k, e.target.value)} style={{ textAlign: 'center', fontFamily: 'Bebas Neue', fontSize: 24 }} />
                 </div>
               ))}
             </div>
           )}
           {error && <div className="alert-error">⚠️ {error}</div>}
-          <button className="btn btn-primary btn-block" onClick={save}>Guardar</button>
+          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar'}</button>
           {edit.mode === 'edit' && (
             <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
-              onClick={async () => { if (window.confirm('¿Eliminar este partido de la liga?')) { await store.deletePartidoLiga(edit.id); setEdit(null) } }}>
+              onClick={async () => { if (window.confirm('¿Eliminar este partido de la liga?')) { try { await store.deletePartidoLiga(edit.id); setEdit(null) } catch (e) { setError(messageFor(e)) } } }}>
               🗑️ Eliminar partido
             </button>
           )}
@@ -175,9 +205,8 @@ function Equipos() {
   const set = (k, v) => setEdit((e) => ({ ...e, data: { ...e.data, [k]: v } }))
 
   const save = async () => {
-    const nombre = edit.data.nombre.trim()
-    if (!nombre) return setError('El nombre es obligatorio.')
-    if (equipos.some((e) => e.id !== edit.id && e.nombre.trim().toLowerCase() === nombre.toLowerCase())) return setError('Ya existe un equipo con ese nombre.')
+    try { validarEquipo({ ...edit.data, escudo_url: null }, { equipos, id: edit.id ?? null }) }
+    catch (e) { return setError(messageFor(e)) }
     setSaving(true)
     try {
       let escudo_url = edit.data.escudo_url
@@ -189,7 +218,7 @@ function Equipos() {
       setEdit(null)
     } catch (e) {
       console.error(e)
-      setError('No se pudo guardar el equipo.')
+      setError(messageFor(e))
     } finally {
       setSaving(false)
     }
@@ -220,7 +249,7 @@ function Equipos() {
         <Sheet title={edit.mode === 'add' ? 'Nuevo equipo' : 'Editar equipo'} onClose={() => setEdit(null)}>
           <div className="form-group">
             <label className="label">Nombre oficial</label>
-            <input className="input" value={edit.data.nombre} onChange={(e) => set('nombre', e.target.value)} disabled={edit.es_propio} autoFocus={edit.mode === 'add'} />
+            <input className="input" value={edit.data.nombre} maxLength={LIMITS.nombreEquipo} onChange={(e) => set('nombre', e.target.value)} disabled={edit.es_propio} autoFocus={edit.mode === 'add'} />
           </div>
           <div className="form-group">
             <label className="label">Nombre corto <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(para la tabla en móvil)</span></label>
@@ -238,13 +267,13 @@ function Equipos() {
           </div>
           <div className="form-group">
             <label className="label">Puntos de sanción <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(se restan en la clasificación)</span></label>
-            <input className="input" type="number" min="0" value={edit.data.sancion_puntos} onChange={(e) => set('sancion_puntos', e.target.value)} />
+            <input className="input" type="number" min="0" max={LIMITS.sancion} step="1" value={edit.data.sancion_puntos} onChange={(e) => set('sancion_puntos', e.target.value)} />
           </div>
           {error && <div className="alert-error">⚠️ {error}</div>}
           <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar'}</button>
           {edit.mode === 'edit' && !edit.es_propio && (
             <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
-              onClick={async () => { if (window.confirm('¿Eliminar el equipo y todos sus resultados de liga?')) { await store.deleteEquipo(edit.id); setEdit(null) } }}>
+              onClick={async () => { if (window.confirm('¿Eliminar el equipo y todos sus resultados de liga?')) { try { await store.deleteEquipo(edit.id); setEdit(null) } catch (e) { setError(messageFor(e)) } } }}>
               🗑️ Eliminar equipo
             </button>
           )}
@@ -266,7 +295,19 @@ function Zonas() {
   }), [temporada])
   const [form, setForm] = useState(initial)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
   if (!temporada) return <div className="empty">No hay temporada activa.</div>
+  const guardar = async () => {
+    try {
+      validarTemporada(form, { numEquipos: equipos.length })
+      await store.updateTemporada(temporada.id, form)
+      setSaved(true)
+      haptics.success?.()
+    } catch (e) {
+      haptics.error?.()
+      setError(messageFor(e))
+    }
+  }
 
   const fields = [
     ['zona_ascenso', '🟢 Plazas de ascenso directo'],
@@ -281,10 +322,11 @@ function Zonas() {
       {fields.map(([k, l]) => (
         <div className="form-group" key={k}>
           <label className="label">{l}</label>
-          <input className="input" type="number" min="0" max={equipos.length} value={form[k]} onChange={(e) => { setForm((f) => ({ ...f, [k]: Number(e.target.value) })); setSaved(false) }} />
+          <input className="input" type="number" min="0" max={Math.min(equipos.length || LIMITS.zonas, LIMITS.zonas)} step="1" value={form[k]} onChange={(e) => { setForm((f) => ({ ...f, [k]: e.target.value === '' ? '' : Number(e.target.value) })); setSaved(false); setError('') }} />
         </div>
       ))}
-      <button className="btn btn-primary btn-block" onClick={async () => { await store.updateTemporada(temporada.id, form); setSaved(true); haptics.success?.() }}>
+      {error && <div className="alert-error">⚠️ {error}</div>}
+      <button className="btn btn-primary btn-block" onClick={guardar}>
         {saved ? '✓ Guardado' : 'Guardar zonas'}
       </button>
     </div>

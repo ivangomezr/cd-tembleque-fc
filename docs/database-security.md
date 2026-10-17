@@ -23,6 +23,7 @@ with the public (anon) key** — the React UI is never the security boundary.
 | --- | --- |
 | `20261017000000_supabase_auth_roles.sql` | Supabase Auth roles (`perfiles`), role helpers, trusted-only role assignment, drops the PIN oracle, removes every `anon write` policy and replaces it with role-based policies, server-side activity log author. |
 | `20261017120000_db_hardening.sql` | Least-privilege `GRANT`s (revoke all, grant back the minimum), no automatic exposure of future objects, private player data moved to `jugadores_privado`, secret MVP ballot with `mvp_ranking()` and stricter vote rules, `EXECUTE` revoked on every function except the needed ones, RLS forced on every table in `public`. |
+| `20261017180000_data_integrity.sql` | Data rules: constraints, unique indexes, validation triggers, timeline order, stats vs timeline. See [data-validation.md](data-validation.md); run `supabase/checks/data_integrity_preflight.sql` first. |
 
 Nothing is dropped from earlier migrations; the old `jugadores.estado_desc` column is kept but
 always empty (a trigger moves any value to `jugadores_privado`). `claves_jugadores` is only

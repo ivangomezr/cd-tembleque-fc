@@ -117,6 +117,10 @@ supabase/
   Private player notes live in `jugadores_privado` (members only) and MVP votes are a secret
   ballot (public totals through `mvp_ranking`). No `service_role` key in the frontend.
 
+- **Data validation**: every write is validated in the form, in the store and, as the last
+  barrier, in the database (constraints, foreign keys, unique indexes and triggers with clear
+  error messages). Rules and decisions: [docs/data-validation.md](docs/data-validation.md).
+
 Details, setup and migration: [docs/auth.md](docs/auth.md). Database audit, permission matrix
 and how to verify migrations on staging first: [docs/database-security.md](docs/database-security.md).
 

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useStore } from '../hooks/useStore'
 import { playerTotals, fmtMin } from '../lib/playerTotals'
 import { useAuth } from '../hooks/useAuth'
+import { messageFor, UserFacingError } from '../lib/dbErrors'
+import { LIMITS } from '../lib/validation'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
 function Avatar({ jugador, size = 'sm' }) {
@@ -99,15 +101,16 @@ export default function Jugadores() {
       let foto_url = form.foto_url || null
       if (fotoArchivo) {
         foto_url = await store.subirFotoJugador(jugador.id, fotoArchivo)
-        if (!foto_url) throw new Error('No se pudo subir la foto. Revisa la configuración de Cloudinary.')
+        if (!foto_url) throw new UserFacingError('No se pudo subir la foto. Inténtalo de nuevo.')
       }
-      await store.updateJugador(jugador.id, { ...form, dorsal: Number(form.dorsal) || null, foto_url })
+      // The store validates (validation.js) and the database checks again
+      await store.updateJugador(jugador.id, { ...form, foto_url })
       setFotoArchivo(null)
       setFotoPreview(null)
       setEditModal(false)
     } catch (e) {
       console.error('[jugadores] update failed', e)
-      window.alert(`No se pudo guardar el jugador: ${e?.message || e}`)
+      window.alert(messageFor(e))
     } finally {
       setSaving(false)
     }
@@ -378,7 +381,7 @@ export default function Jugadores() {
             {form.estado !== 'disponible' && (
               <div className="form-group">
                 <label className="label">Descripción <span style={{ fontWeight: 400, color: 'var(--gris-mid)', fontSize: 11 }}>(opcional)</span></label>
-                <input className="input" value={form.estado_desc} onChange={e => setF('estado_desc', e.target.value)} placeholder={form.estado === 'lesionado' ? 'Ej: Rotura de ligamentos' : 'Describe el motivo'} />
+                <input className="input" value={form.estado_desc} maxLength={LIMITS.estadoDesc} onChange={e => setF('estado_desc', e.target.value)} placeholder={form.estado === 'lesionado' ? 'Ej: Rotura de ligamentos' : 'Describe el motivo'} />
               </div>
             )}
             <button onClick={saveEdit} disabled={saving} className="btn btn-primary btn-block" style={{ opacity: saving ? 0.7 : 1 }}>
