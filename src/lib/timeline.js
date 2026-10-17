@@ -62,8 +62,19 @@ export function withRunningScore(events = []) {
   })
 }
 
-/** Effective minute capped to the regulation length (90+3 → 90, 45+2 → 45). */
-const effMinute = (e, duration) => Math.min(Math.max(Number(e.minuto) || 0, 0), duration)
+/** First minute of the second half (46' in a 90' match), where half-time substitutions are written. */
+export const minutoDescanso = (duration = 90) => Math.floor(duration / 2) + 1
+
+/** A substitution made at half-time: written as 46' (after the break) but it happens at 45'. */
+export const esCambioDescanso = (e, duration = 90) =>
+  e?.tipo === 'cambio' && !Number(e.minuto_extra) && Number(e.minuto) === minutoDescanso(duration)
+
+/**
+ * Effective minute for minutes played, capped to the regulation length (90+3 → 90, 45+2 → 45).
+ * A half-time substitution counts at the end of the first half, so both players get 45'.
+ */
+const effMinute = (e, duration) =>
+  esCambioDescanso(e, duration) ? Math.floor(duration / 2) : Math.min(Math.max(Number(e.minuto) || 0, 0), duration)
 
 /**
  * Minutes played, starts and goals conceded (goalkeepers) for OUR players.
