@@ -146,6 +146,69 @@ export function statsFromEvents(events = []) {
   return out
 }
 
+/**
+ * Replays a match timeline and returns the first impossible step, or null.
+ * Mirrors validacion.cronologia() in the database (migration 20261017180000):
+ *   - nobody acts after being sent off (same minute is allowed);
+ *   - a second yellow must be a «segunda_amarilla» after one «amarilla»;
+ *   - nobody is sent off twice;
+ *   - when the starting XI is known: the player going off must be on the pitch,
+ *     the one coming on must not, and scorers / assisters / penalty takers must
+ *     be playing at that minute. Cards can go to substitutes on the bench.
+ *
+ * @param {Array} events
+ * @param {number[]} starters  starting XI ids ([] = unknown)
+ * @param {(id:number)=>string} nameOf
+ */
+export function timelineIssue(events = [], starters = [], nameOf = (id) => `Jugador ${id}`) {
+  const known = starters.length > 0
+  const pitch = new Set(starters.map(Number))
+  const sentOff = new Map() // id → time
+  const yellows = new Map()
+  const t = (e) => (Number(e.minuto) || 0) * 100 + (Number(e.minuto_extra) || 0)
+
+  for (const e of sortEvents(events)) {
+    const time = t(e)
+    const at = minuteLabel(e)
+    const ours = e.equipo === 'propio'
+    const involved = (ours ? [e.jugador_id, e.jugador2_id] : e.tipo === 'gol_propia' ? [e.jugador_id] : [])
+      .filter((x) => x != null).map(Number)
+    for (const id of involved) {
+      if (sentOff.has(id) && time > sentOff.get(id)) return `${nameOf(id)} no puede aparecer en el ${at}: ya había sido expulsado.`
+    }
+    const p = e.jugador_id != null ? Number(e.jugador_id) : null
+    const p2 = e.jugador2_id != null ? Number(e.jugador2_id) : null
+
+    if (ours && p != null) {
+      if (e.tipo === 'amarilla') {
+        if ((yellows.get(p) || 0) >= 1) return `${nameOf(p)} ya tenía una amarilla: la del ${at} regístrala como «2ª amarilla».`
+        yellows.set(p, 1)
+      } else if (e.tipo === 'segunda_amarilla') {
+        if ((yellows.get(p) || 0) !== 1) return `${nameOf(p)} no tiene una amarilla anterior al ${at}.`
+        if (sentOff.has(p)) return `${nameOf(p)} ya había sido expulsado.`
+        yellows.set(p, 2); sentOff.set(p, time); pitch.delete(p)
+      } else if (e.tipo === 'roja') {
+        if (sentOff.has(p)) return `${nameOf(p)} ya había sido expulsado.`
+        sentOff.set(p, time); pitch.delete(p)
+      } else if (e.tipo === 'cambio') {
+        if (known && p2 != null && !pitch.has(p2)) return `${nameOf(p2)} no estaba en el campo en el ${at} para ser sustituido.`
+        if (known && pitch.has(p)) return `${nameOf(p)} ya estaba en el campo en el ${at}.`
+        if (p2 != null) pitch.delete(p2)
+        pitch.add(p)
+      } else {
+        for (const id of [p, p2].filter((x) => x != null)) {
+          if (known && !pitch.has(id)) return `${nameOf(id)} no estaba en el campo en el ${at}.`
+        }
+      }
+    } else if (ours && e.tipo === 'gol_propia' && p2 != null) {
+      if (known && !pitch.has(p2)) return `${nameOf(p2)} no estaba en el campo en el ${at}.`
+    } else if (!ours && e.tipo === 'gol_propia' && p != null) {
+      if (known && !pitch.has(p)) return `${nameOf(p)} no estaba en el campo en el ${at}.`
+    }
+  }
+  return null
+}
+
 /** Starting XI ids from an `alineaciones.jugadores` value (slots or plain ids). */
 export function startersFromLineup(lineup) {
   const slots = lineup?.jugadores || []

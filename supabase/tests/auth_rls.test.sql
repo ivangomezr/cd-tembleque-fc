@@ -16,12 +16,12 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b2', 'jugador-902@test.local'),
   ('00000000-0000-0000-0000-0000000000c1', 'sinperfil@test.local');
 
-insert into public.temporadas (id, nombre, "año", activa) values (900, 'Test', 2099, false);
+insert into public.temporadas (id, nombre, "año", activa) values (900, 'Test', 2020, false);
 insert into public.jugadores (id, nombre, posicion, dorsal) values
   (901, 'Uno', 'Portero', 1), (902, 'Dos', 'Defensa', 2), (903, 'Tres', 'Delantero', 9);
 insert into public.partidos (id, temporada_id, jornada, fecha, local, visitante, jugado, convocados) values
-  (910, 900, 1, '2099-01-01', 'A', 'B', true, '[901, 902, 903]'),
-  (911, 900, 2, '2099-01-08', 'A', 'C', false, '[]');
+  (910, 900, 1, '2020-01-01', 'A', 'B', true, '[901, 902, 903]'),
+  (911, 900, 2, '2020-01-08', 'A', 'C', false, '[]');
 
 select public.asignar_rol('00000000-0000-0000-0000-0000000000a1', 'admin');
 select public.asignar_rol('00000000-0000-0000-0000-0000000000a2', 'superadmin');
@@ -40,7 +40,7 @@ select pg_temp.como(null);
 
 select ok((select count(*) from public.partidos where id in (910, 911)) = 2, 'visitante: lee partidos');
 select ok((select count(id) from public.jugadores where id >= 901) = 3, 'visitante: lee la plantilla');
-select throws_ok($$ insert into public.partidos (jornada, fecha, local, visitante) values (3, '2099-02-01', 'X', 'Y') $$,
+select throws_ok($$ insert into public.partidos (jornada, fecha, local, visitante) values (3, '2020-02-01', 'X', 'Y') $$,
   '42501', null, 'visitante: no puede crear partidos');
 select throws_ok($$ select * from public.perfiles $$, '42501', null, 'visitante: no ve perfiles');
 select throws_ok($$ select * from public.activity_log $$, '42501', null, 'visitante: no lee el log');
@@ -55,7 +55,7 @@ select pg_temp.como('00000000-0000-0000-0000-0000000000b1');
 select is(public.mi_rol()::text, 'jugador', 'jugador: mi_rol() = jugador');
 select is(public.mi_jugador_id(), 901, 'jugador: vinculado a su ficha');
 select is(public.is_admin(), false, 'jugador: no es admin');
-select throws_ok($$ insert into public.partidos (jornada, fecha, local, visitante) values (3, '2099-02-01', 'X', 'Y') $$,
+select throws_ok($$ insert into public.partidos (jornada, fecha, local, visitante) values (3, '2020-02-01', 'X', 'Y') $$,
   '42501', null, 'jugador: no puede crear partidos');
 select throws_ok($$ update public.perfiles set rol = 'superadmin' where user_id = auth.uid() $$,
   '42501', null, 'jugador: no puede ascenderse de rol');
@@ -66,7 +66,7 @@ select lives_ok($$ insert into public.votos_mvp (partido_id, votante_id, votado_
 select throws_ok($$ insert into public.votos_mvp (partido_id, votante_id, votado_id) values (910, 902, 903) $$,
   '42501', null, 'jugador: no puede votar en nombre de otro');
 select throws_ok($$ insert into public.votos_mvp (partido_id, votante_id, votado_id) values (911, 901, 903) $$,
-  '42501', null, 'jugador: no puede votar en un partido sin jugar');
+  'CD400', null, 'jugador: no puede votar en un partido sin jugar');
 select is((select count(*)::int from public.perfiles), 1, 'jugador: solo ve su propio perfil');
 
 -- a player cannot delete someone else's vote (row is invisible → 0 rows affected)
@@ -90,7 +90,7 @@ reset role;
 set local role authenticated;
 select pg_temp.como('00000000-0000-0000-0000-0000000000a1');
 
-select lives_ok($$ insert into public.partidos (jornada, fecha, local, visitante, temporada_id) values (3, '2099-02-01', 'X', 'Y', 900) $$,
+select lives_ok($$ insert into public.partidos (jornada, fecha, local, visitante, temporada_id) values (3, '2020-02-01', 'X', 'Y', 900) $$,
   'admin: crea partidos');
 select lives_ok($$ update public.temporadas set zona_ascenso = 2 where id = 900 $$,
   'admin: edita la configuración de la temporada');

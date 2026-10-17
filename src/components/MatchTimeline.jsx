@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Sheet from './Sheet'
 import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal } from '../lib/timeline'
+import { limitesMinuto, LIMITS } from '../lib/validation'
+import { messageFor } from '../lib/dbErrors'
 import { CLUB } from '../config/club'
 import { haptics } from '../lib/haptics'
 import { GoalIcon, CardIcon } from './EventIcons'
@@ -167,9 +169,11 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
 
   const playerLabel = isSub ? '↑ Entra' : form.tipo.startsWith('gol') && form.tipo !== 'gol_propia' ? 'Goleador' : form.tipo === 'gol_propia' ? 'Jugador nuestro que marca en propia' : form.tipo === 'penalti_fallado' ? 'Lanzador' : 'Jugador'
 
+  const { dur, max: maxMinuto } = limitesMinuto(partido, store.getTemporadaActiva?.())
+
   const save = async () => {
     const m = Number(form.minuto)
-    if (!m || m < 1 || m > 130) return setError('Indica un minuto válido (1-120).')
+    if (!Number.isInteger(m) || m < 1 || m > maxMinuto) return setError(`Indica un minuto entre 1 y ${maxMinuto}. El tiempo añadido va aparte (${dur}+2).`)
     if (needsPlayer && !form.jugador_id) return setError(`Selecciona ${playerLabel.toLowerCase()}.`)
     if (isSub && !form.jugador2_id) return setError('Selecciona quién sale.')
     if (isSub && Number(form.jugador_id) === Number(form.jugador2_id)) return setError('Entra y sale el mismo jugador.')
@@ -191,15 +195,20 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       onClose(true)
     } catch (e) {
       console.error(e)
-      setError('No se pudo guardar el evento.')
+      // Timeline order, call-up and minute rules come back as clear messages
+      setError(messageFor(e))
       setSaving(false)
     }
   }
 
   const remove = async () => {
     if (!window.confirm('¿Eliminar este evento?')) return
-    await store.deleteEvento(evento.id, partido.id)
-    onClose(true)
+    try {
+      await store.deleteEvento(evento.id, partido.id)
+      onClose(true)
+    } catch (e) {
+      setError(messageFor(e))
+    }
   }
 
   const playerSelect = ({ k, label, optional }) => (
@@ -253,11 +262,11 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
         <div className="form-group">
           <label className="label">Minuto</label>
-          <input className="input" type="number" inputMode="numeric" min="1" max="120" value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
+          <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
         </div>
         <div className="form-group">
           <label className="label">Añadido <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(45+2 → 2)</span></label>
-          <input className="input" type="number" inputMode="numeric" min="0" max="15" value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
+          <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
         </div>
       </div>
 
@@ -267,7 +276,7 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       {needsRivalName && (
         <div className="form-group">
           <label className="label">Jugador rival <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(opcional)</span></label>
-          <input className="input" value={form.nombre_rival} onChange={(e) => set('nombre_rival', e.target.value)} placeholder="Nombre o dorsal, ej: Dorsal 9" />
+          <input className="input" value={form.nombre_rival} maxLength={LIMITS.nombreRival} onChange={(e) => set('nombre_rival', e.target.value)} placeholder="Nombre o dorsal, ej: Dorsal 9" />
         </div>
       )}
 

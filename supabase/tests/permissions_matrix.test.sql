@@ -16,15 +16,15 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b1', 'jugador-901@test.local'),
   ('00000000-0000-0000-0000-0000000000b2', 'jugador-902@test.local'),
   ('00000000-0000-0000-0000-0000000000c1', 'sinperfil@test.local');
-insert into public.temporadas (id, nombre, "año", activa) values (900, 'Test', 2099, false);
+insert into public.temporadas (id, nombre, "año", activa) values (900, 'Test', 2020, false);
 insert into public.jugadores (id, nombre, posicion, dorsal) values
   (901, 'Uno', 'Portero', 1), (902, 'Dos', 'Defensa', 2), (903, 'Tres', 'Delantero', 9);
 insert into public.jugadores_privado (jugador_id, estado_desc) values (901, 'Lesión de rodilla');
 insert into public.equipos_liga (id, temporada_id, nombre) values (920, 900, 'A'), (921, 900, 'B');
-insert into public.partidos_liga (id, temporada_id, jornada, local_id, visitante_id) values (930, 900, 1, 920, 921);
+insert into public.partidos_liga (id, temporada_id, jornada, local_id, visitante_id) values (930, 900, 5, 920, 921);
 insert into public.partidos (id, temporada_id, jornada, fecha, local, visitante, jugado, convocados) values
-  (910, 900, 1, '2099-01-01', 'A', 'B', true, '[901, 902]'),
-  (911, 900, 2, '2099-01-08', 'A', 'C', false, '[]');
+  (910, 900, 1, '2020-01-01', 'A', 'B', true, '[901, 902]'),
+  (911, 900, 2, '2020-01-08', 'A', 'C', false, '[]');
 insert into public.alineaciones (partido_id, formacion) values (910, '4-4-2');
 insert into public.eventos_partido (id, partido_id, minuto, tipo, equipo) values (940, 910, 10, 'gol', 'rival');
 insert into public.estadisticas (id, jugador_id, partido_id, minutos) values (950, 901, 910, 90);
@@ -76,7 +76,7 @@ select is(pg_temp.filas($q$delete from public.equipos_liga where nombre = 'Matri
 select throws_ok($q$insert into public.partidos_liga (temporada_id, jornada, local_id, visitante_id) values (900, 9, 921, 920)$q$, '42501', null, 'anon: NO inserta en partidos_liga');
 select is(pg_temp.filas($q$update public.partidos_liga set jornada = jornada where id = 930$q$), 0, 'anon: NO actualiza partidos_liga');
 select is(pg_temp.filas($q$delete from public.partidos_liga where jornada = 9$q$), 0, 'anon: NO borra en partidos_liga');
-select throws_ok($q$insert into public.partidos (jornada, fecha, local, visitante) values (9, '2099-03-01', 'Matrix', 'B')$q$, '42501', null, 'anon: NO inserta en partidos');
+select throws_ok($q$insert into public.partidos (temporada_id, jornada, fecha, local, visitante) values (900, 9, '2020-03-01', 'Matrix', 'B')$q$, '42501', null, 'anon: NO inserta en partidos');
 select is(pg_temp.filas($q$update public.partidos set campo = campo where id = 910$q$), 0, 'anon: NO actualiza partidos');
 select is(pg_temp.filas($q$delete from public.partidos where local = 'Matrix'$q$), 0, 'anon: NO borra en partidos');
 select throws_ok($q$insert into public.alineaciones (partido_id) values (911)$q$, '42501', null, 'anon: NO inserta en alineaciones');
@@ -94,7 +94,7 @@ select is(pg_temp.filas($q$delete from public.patrocinadores where nombre = 'Mat
 select throws_ok($q$insert into public.jugadores_privado (jugador_id, estado_desc) values (903, 'Matrix')$q$, '42501', null, 'anon: NO inserta en jugadores_privado');
 select is(pg_temp.filas($q$update public.jugadores_privado set estado_desc = estado_desc where jugador_id = 901$q$), 0, 'anon: NO actualiza jugadores_privado');
 select is(pg_temp.filas($q$delete from public.jugadores_privado where jugador_id = 903$q$), 0, 'anon: NO borra en jugadores_privado');
-select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2101, false)$q$, '42501', null, 'anon: NO inserta en temporadas');
+select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2030, false)$q$, '42501', null, 'anon: NO inserta en temporadas');
 select is(pg_temp.filas($q$update public.temporadas set zona_ascenso = zona_ascenso where id = 900$q$), 0, 'anon: NO actualiza temporadas');
 select is(pg_temp.filas($q$delete from public.temporadas where nombre = 'Matrix'$q$), 0, 'anon: NO borra en temporadas');
 select throws_ok($q$insert into public.perfiles (user_id, rol) values ('00000000-0000-0000-0000-0000000000c1', 'superadmin')$q$, '42501', null, 'anon: NO inserta en perfiles');
@@ -122,7 +122,7 @@ select is(pg_temp.filas($q$delete from public.equipos_liga where nombre = 'Matri
 select throws_ok($q$insert into public.partidos_liga (temporada_id, jornada, local_id, visitante_id) values (900, 9, 921, 920)$q$, '42501', null, 'jugador: NO inserta en partidos_liga');
 select is(pg_temp.filas($q$update public.partidos_liga set jornada = jornada where id = 930$q$), 0, 'jugador: NO actualiza partidos_liga');
 select is(pg_temp.filas($q$delete from public.partidos_liga where jornada = 9$q$), 0, 'jugador: NO borra en partidos_liga');
-select throws_ok($q$insert into public.partidos (jornada, fecha, local, visitante) values (9, '2099-03-01', 'Matrix', 'B')$q$, '42501', null, 'jugador: NO inserta en partidos');
+select throws_ok($q$insert into public.partidos (temporada_id, jornada, fecha, local, visitante) values (900, 9, '2020-03-01', 'Matrix', 'B')$q$, '42501', null, 'jugador: NO inserta en partidos');
 select is(pg_temp.filas($q$update public.partidos set campo = campo where id = 910$q$), 0, 'jugador: NO actualiza partidos');
 select is(pg_temp.filas($q$delete from public.partidos where local = 'Matrix'$q$), 0, 'jugador: NO borra en partidos');
 select throws_ok($q$insert into public.alineaciones (partido_id) values (911)$q$, '42501', null, 'jugador: NO inserta en alineaciones');
@@ -140,7 +140,7 @@ select is(pg_temp.filas($q$delete from public.patrocinadores where nombre = 'Mat
 select throws_ok($q$insert into public.jugadores_privado (jugador_id, estado_desc) values (903, 'Matrix')$q$, '42501', null, 'jugador: NO inserta en jugadores_privado');
 select is(pg_temp.filas($q$update public.jugadores_privado set estado_desc = estado_desc where jugador_id = 901$q$), 0, 'jugador: NO actualiza jugadores_privado');
 select is(pg_temp.filas($q$delete from public.jugadores_privado where jugador_id = 903$q$), 0, 'jugador: NO borra en jugadores_privado');
-select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2101, false)$q$, '42501', null, 'jugador: NO inserta en temporadas');
+select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2030, false)$q$, '42501', null, 'jugador: NO inserta en temporadas');
 select is(pg_temp.filas($q$update public.temporadas set zona_ascenso = zona_ascenso where id = 900$q$), 0, 'jugador: NO actualiza temporadas');
 select is(pg_temp.filas($q$delete from public.temporadas where nombre = 'Matrix'$q$), 0, 'jugador: NO borra en temporadas');
 select throws_ok($q$insert into public.perfiles (user_id, rol) values ('00000000-0000-0000-0000-0000000000c1', 'superadmin')$q$, '42501', null, 'jugador: NO inserta en perfiles');
@@ -168,7 +168,7 @@ select ok(pg_temp.filas($q$delete from public.equipos_liga where nombre = 'Matri
 select lives_ok($q$insert into public.partidos_liga (temporada_id, jornada, local_id, visitante_id) values (900, 9, 921, 920)$q$, 'admin: inserta en partidos_liga');
 select ok(pg_temp.filas($q$update public.partidos_liga set jornada = jornada where id = 930$q$) >= 1, 'admin: actualiza partidos_liga');
 select ok(pg_temp.filas($q$delete from public.partidos_liga where jornada = 9$q$) >= 1, 'admin: borra en partidos_liga');
-select lives_ok($q$insert into public.partidos (jornada, fecha, local, visitante) values (9, '2099-03-01', 'Matrix', 'B')$q$, 'admin: inserta en partidos');
+select lives_ok($q$insert into public.partidos (temporada_id, jornada, fecha, local, visitante) values (900, 9, '2020-03-01', 'Matrix', 'B')$q$, 'admin: inserta en partidos');
 select ok(pg_temp.filas($q$update public.partidos set campo = campo where id = 910$q$) >= 1, 'admin: actualiza partidos');
 select ok(pg_temp.filas($q$delete from public.partidos where local = 'Matrix'$q$) >= 1, 'admin: borra en partidos');
 select lives_ok($q$insert into public.alineaciones (partido_id) values (911)$q$, 'admin: inserta en alineaciones');
@@ -186,7 +186,7 @@ select ok(pg_temp.filas($q$delete from public.patrocinadores where nombre = 'Mat
 select lives_ok($q$insert into public.jugadores_privado (jugador_id, estado_desc) values (903, 'Matrix')$q$, 'admin: inserta en jugadores_privado');
 select ok(pg_temp.filas($q$update public.jugadores_privado set estado_desc = estado_desc where jugador_id = 901$q$) >= 1, 'admin: actualiza jugadores_privado');
 select ok(pg_temp.filas($q$delete from public.jugadores_privado where jugador_id = 903$q$) >= 1, 'admin: borra en jugadores_privado');
-select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2101, false)$q$, '42501', null, 'admin: NO inserta en temporadas');
+select throws_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2030, false)$q$, '42501', null, 'admin: NO inserta en temporadas');
 select ok(pg_temp.filas($q$update public.temporadas set zona_ascenso = zona_ascenso where id = 900$q$) >= 1, 'admin: actualiza la configuración de temporadas');
 select is(pg_temp.filas($q$delete from public.temporadas where nombre = 'Matrix'$q$), 0, 'admin: NO borra en temporadas');
 select throws_ok($q$insert into public.perfiles (user_id, rol) values ('00000000-0000-0000-0000-0000000000c1', 'superadmin')$q$, '42501', null, 'admin: NO inserta en perfiles');
@@ -214,7 +214,7 @@ select ok(pg_temp.filas($q$delete from public.equipos_liga where nombre = 'Matri
 select lives_ok($q$insert into public.partidos_liga (temporada_id, jornada, local_id, visitante_id) values (900, 9, 921, 920)$q$, 'superadmin: inserta en partidos_liga');
 select ok(pg_temp.filas($q$update public.partidos_liga set jornada = jornada where id = 930$q$) >= 1, 'superadmin: actualiza partidos_liga');
 select ok(pg_temp.filas($q$delete from public.partidos_liga where jornada = 9$q$) >= 1, 'superadmin: borra en partidos_liga');
-select lives_ok($q$insert into public.partidos (jornada, fecha, local, visitante) values (9, '2099-03-01', 'Matrix', 'B')$q$, 'superadmin: inserta en partidos');
+select lives_ok($q$insert into public.partidos (temporada_id, jornada, fecha, local, visitante) values (900, 9, '2020-03-01', 'Matrix', 'B')$q$, 'superadmin: inserta en partidos');
 select ok(pg_temp.filas($q$update public.partidos set campo = campo where id = 910$q$) >= 1, 'superadmin: actualiza partidos');
 select ok(pg_temp.filas($q$delete from public.partidos where local = 'Matrix'$q$) >= 1, 'superadmin: borra en partidos');
 select lives_ok($q$insert into public.alineaciones (partido_id) values (911)$q$, 'superadmin: inserta en alineaciones');
@@ -232,7 +232,7 @@ select ok(pg_temp.filas($q$delete from public.patrocinadores where nombre = 'Mat
 select lives_ok($q$insert into public.jugadores_privado (jugador_id, estado_desc) values (903, 'Matrix')$q$, 'superadmin: inserta en jugadores_privado');
 select ok(pg_temp.filas($q$update public.jugadores_privado set estado_desc = estado_desc where jugador_id = 901$q$) >= 1, 'superadmin: actualiza jugadores_privado');
 select ok(pg_temp.filas($q$delete from public.jugadores_privado where jugador_id = 903$q$) >= 1, 'superadmin: borra en jugadores_privado');
-select lives_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2101, false)$q$, 'superadmin: inserta en temporadas');
+select lives_ok($q$insert into public.temporadas (nombre, "año", activa) values ('Matrix', 2030, false)$q$, 'superadmin: inserta en temporadas');
 select ok(pg_temp.filas($q$update public.temporadas set zona_ascenso = zona_ascenso where id = 900$q$) >= 1, 'superadmin: actualiza temporadas');
 select ok(pg_temp.filas($q$delete from public.temporadas where nombre = 'Matrix'$q$) >= 1, 'superadmin: borra en temporadas');
 select throws_ok($q$insert into public.perfiles (user_id, rol) values ('00000000-0000-0000-0000-0000000000c1', 'superadmin')$q$, '42501', null, 'superadmin: NO inserta en perfiles');
@@ -274,10 +274,10 @@ select is((select count(*)::int from public.activity_log), 0, 'jugador: no lee e
 -- ═══ MVP vote rules (player 901) ════════════════════════════════════════════
 select lives_ok($q$insert into public.votos_mvp (partido_id, votante_id, votado_id) values (910, 901, 902)$q$, 'voto: válido (convocado, partido jugado)');
 select is((select count(*)::int from public.votos_mvp), 1, 'voto: el jugador ve su propio voto');
-select throws_ok($q$update public.votos_mvp set votado_id = 903 where votante_id = 901$q$, '42501', null, 'voto: NO a quien no participó');
-select throws_ok($q$update public.votos_mvp set votado_id = 901 where votante_id = 901$q$, '42501', null, 'voto: NO a sí mismo');
+select throws_ok($q$update public.votos_mvp set votado_id = 903 where votante_id = 901$q$, 'CD400', null, 'voto: NO a quien no participó');
+select throws_ok($q$update public.votos_mvp set votado_id = 901 where votante_id = 901$q$, 'CD400', null, 'voto: NO a sí mismo');
 select throws_ok($q$insert into public.votos_mvp (partido_id, votante_id, votado_id) values (910, 902, 901)$q$, '42501', null, 'voto: NO suplantar a otro votante');
-select throws_ok($q$insert into public.votos_mvp (partido_id, votante_id, votado_id) values (911, 901, 902)$q$, '42501', null, 'voto: NO en partido sin jugar');
+select throws_ok($q$insert into public.votos_mvp (partido_id, votante_id, votado_id) values (911, 901, 902)$q$, 'CD400', null, 'voto: NO en partido sin jugar');
 select is(pg_temp.filas($q$delete from public.votos_mvp where votante_id = 902$q$), 0, 'voto: NO borra votos ajenos');
 select is(pg_temp.filas($q$delete from public.votos_mvp where votante_id = 901$q$), 1, 'voto: retira su propio voto');
 

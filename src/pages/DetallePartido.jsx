@@ -12,6 +12,7 @@ import TeamCrest from '../components/TeamCrest'
 import Sheet from '../components/Sheet'
 import KitPicker from '../components/KitPicker'
 import { KITS, DEFAULT_KIT } from '../config/club'
+import { messageFor } from '../lib/dbErrors'
 
 const fmt = (str) => new Date(str).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const posOrder = { Portero: 0, Defensa: 1, Centrocampista: 2, Delantero: 3 }
@@ -95,13 +96,22 @@ export default function DetallePartido() {
   const votar = async (jid) => {
     if (!jugadorActivo) return
     haptics.tap?.()
-    await store.votarMvp(partido.id, jugadorActivo.id, jid)
-    setMiVoto(jid)
+    try {
+      await store.votarMvp(partido.id, jugadorActivo.id, jid)
+      setMiVoto(jid)
+    } catch (e) {
+      haptics.error?.()
+      window.alert(messageFor(e))
+    }
     setVotos(await store.getVotosMvp(partido.id))
   }
   const quitarVoto = async () => {
-    setMiVoto(null)
-    await store.eliminarVotoMvp(partido.id, jugadorActivo.id)
+    try {
+      await store.eliminarVotoMvp(partido.id, jugadorActivo.id)
+      setMiVoto(null)
+    } catch (e) {
+      window.alert(messageFor(e))
+    }
     setVotos(await store.getVotosMvp(partido.id))
   }
 
@@ -188,7 +198,7 @@ export default function DetallePartido() {
           </div>
           {isAdmin && (
             <div style={{ marginBottom: 12 }}>
-              <KitPicker value={partido.equipacion || DEFAULT_KIT} onChange={(v) => v !== partido.equipacion && store.updatePartido(partido.id, { equipacion: v })} />
+              <KitPicker value={partido.equipacion || DEFAULT_KIT} onChange={(v) => v !== partido.equipacion && store.updatePartido(partido.id, { equipacion: v }).catch((e) => window.alert(messageFor(e)))} />
             </div>
           )}
           {alineacionCargada
@@ -336,21 +346,30 @@ export default function DetallePartido() {
 function ConvocatoriaSheet({ partido, jugadores, alineacion, store, onClose }) {
   const [sel, setSel] = useState(partido.convocados || [])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const disponibles = [...jugadores].sort(byPos)
   const toggle = (id, on) => setSel((s) => (on ? [...new Set([...s, id])] : s.filter((x) => x !== id)))
 
   const save = async () => {
     setSaving(true)
+    setError('')
     let nueva = null
-    // Remove from the lineup anyone who is no longer called up
-    if (alineacion?.jugadores?.some((s) => s?.jugador_id && !sel.includes(s.jugador_id))) {
-      const slots = alineacion.jugadores.map((s) => (s?.jugador_id && !sel.includes(s.jugador_id) ? { ...s, jugador_id: null } : s))
-      await store.saveAlineacion(partido.id, alineacion.formacion, slots)
-      nueva = { ...alineacion, jugadores: slots }
+    try {
+      // Remove from the lineup anyone who is no longer called up
+      if (alineacion?.jugadores?.some((s) => s?.jugador_id && !sel.includes(s.jugador_id))) {
+        const slots = alineacion.jugadores.map((s) => (s?.jugador_id && !sel.includes(s.jugador_id) ? { ...s, jugador_id: null } : s))
+        await store.saveAlineacion(partido.id, alineacion.formacion, slots)
+        nueva = { ...alineacion, jugadores: slots }
+      }
+      await store.updateConvocados(partido.id, sel)
+      haptics.success?.()
+      onClose(nueva)
+    } catch (e) {
+      // e.g. dropping a player who already has events or stats in this match
+      haptics.error?.()
+      setError(messageFor(e))
+      setSaving(false)
     }
-    await store.updateConvocados(partido.id, sel)
-    haptics.success?.()
-    onClose(nueva)
   }
 
   return (
@@ -375,6 +394,7 @@ function ConvocatoriaSheet({ partido, jugadores, alineacion, store, onClose }) {
           )
         })}
       </div>
+      {error && <div className="alert-error">⚠️ {error}</div>}
       <button onClick={save} disabled={saving} className="btn btn-primary btn-block">{saving ? 'Guardando…' : `Guardar convocatoria (${sel.length})`}</button>
     </Sheet>
   )
