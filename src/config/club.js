@@ -7,6 +7,13 @@ export const CLUB = {
   initials: 'CDT',
   crest: '/escudo.png',
   homeGround: 'Campo Municipal de Tembleque',
+  /** Team photo for the home header (public/img, generated from the original at 640 and 1200 px). */
+  photo: {
+    webp640: '/img/equipo-640.webp',
+    webp1200: '/img/equipo-1200.webp',
+    jpg: '/img/equipo-1200.jpg',
+    alt: 'Plantilla del CD Tembleque FC posando en el campo',
+  },
 }
 
 export const COMPETITION = {
