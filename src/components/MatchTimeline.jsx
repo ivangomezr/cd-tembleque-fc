@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Sheet from './Sheet'
-import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal } from '../lib/timeline'
+import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal, minutoDescanso, esCambioDescanso } from '../lib/timeline'
 import { limitesMinuto, LIMITS } from '../lib/validation'
 import { messageFor } from '../lib/dbErrors'
 import { CLUB } from '../config/club'
@@ -170,6 +170,9 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
   const playerLabel = isSub ? '↑ Entra' : form.tipo.startsWith('gol') && form.tipo !== 'gol_propia' ? 'Goleador' : form.tipo === 'gol_propia' ? 'Jugador nuestro que marca en propia' : form.tipo === 'penalti_fallado' ? 'Lanzador' : 'Jugador'
 
   const { dur, max: maxMinuto } = limitesMinuto(partido, store.getTemporadaActiva?.())
+  // Half-time substitutions are stored as the first minute of the second half (46')
+  const enDescanso = form.tipo === 'cambio' && esCambioDescanso({ ...form, tipo: 'cambio' }, dur)
+  const toggleDescanso = (on) => setForm((f) => ({ ...f, minuto: on ? minutoDescanso(dur) : '', minuto_extra: '' }))
 
   const save = async () => {
     const m = Number(form.minuto)
@@ -259,14 +262,25 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
         </p>
       )}
 
+      {form.tipo === 'cambio' && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 14, borderRadius: 10, cursor: 'pointer',
+          background: enDescanso ? 'var(--primary-pale)' : '#f7f9fc', border: `1.5px solid ${enDescanso ? 'var(--primary)' : '#e1e8f2'}` }}>
+          <input type="checkbox" checked={enDescanso} onChange={(e) => toggleDescanso(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+          <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>En el descanso</span>
+            <span style={{ fontSize: 11, color: 'var(--gris-mid)' }}>Se muestra en el {minutoDescanso(dur)}' y cuenta {Math.floor(dur / 2)}' para cada jugador</span>
+          </span>
+        </label>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
         <div className="form-group">
           <label className="label">Minuto</label>
-          <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
+          <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" disabled={enDescanso} value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
         </div>
         <div className="form-group">
           <label className="label">Añadido <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(45+2 → 2)</span></label>
-          <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
+          <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" disabled={enDescanso} value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
         </div>
       </div>
 

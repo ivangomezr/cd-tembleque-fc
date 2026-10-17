@@ -19,6 +19,27 @@ describe('computePlayerMinutes', () => {
     expect(titular[14]).toBe(false)
   })
 
+  it('counts a half-time substitution (46\') as 45 + 45', () => {
+    const events = [{ id: 1, tipo: 'cambio', equipo: 'propio', minuto: 46, jugador_id: 14, jugador2_id: 9 }]
+    const { minutos } = computePlayerMinutes({ starters: XI, events })
+    expect(minutos[9]).toBe(45)
+    expect(minutos[14]).toBe(45)
+  })
+
+  it('a substitution in the 47th minute is not a half-time one', () => {
+    const events = [{ id: 1, tipo: 'cambio', equipo: 'propio', minuto: 47, jugador_id: 14, jugador2_id: 9 }]
+    const { minutos } = computePlayerMinutes({ starters: XI, events })
+    expect(minutos[9]).toBe(47)
+    expect(minutos[14]).toBe(43)
+  })
+
+  it('uses half of the match length for shorter matches (80\' → 41\' is half-time)', () => {
+    const events = [{ id: 1, tipo: 'cambio', equipo: 'propio', minuto: 41, jugador_id: 14, jugador2_id: 9 }]
+    const { minutos } = computePlayerMinutes({ starters: XI, events, duration: 80 })
+    expect(minutos[9]).toBe(40)
+    expect(minutos[14]).toBe(40)
+  })
+
   it('caps added time to the regulation length', () => {
     const events = [{ id: 1, tipo: 'cambio', equipo: 'propio', minuto: 90, minuto_extra: 3, jugador_id: 15, jugador2_id: 10 }]
     const { minutos } = computePlayerMinutes({ starters: XI, events })
@@ -58,8 +79,8 @@ describe('computePlayerMinutes', () => {
     const { golesEncajados, minutos } = computePlayerMinutes({ starters: XI, events, isGoalkeeper: GK })
     expect(golesEncajados[1]).toBe(1)
     expect(golesEncajados[12]).toBe(1)
-    expect(minutos[1]).toBe(46)
-    expect(minutos[12]).toBe(44)
+    expect(minutos[1]).toBe(45) // half-time change: 45 + 45
+    expect(minutos[12]).toBe(45)
   })
 })
 
