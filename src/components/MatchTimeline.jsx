@@ -259,6 +259,17 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
         </p>
       )}
 
+      {form.tipo === 'cambio' && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 14, borderRadius: 10, cursor: 'pointer',
+          background: enDescanso ? 'var(--primary-pale)' : '#f7f9fc', border: `1.5px solid ${enDescanso ? 'var(--primary)' : '#e1e8f2'}` }}>
+          <input type="checkbox" checked={enDescanso} onChange={(e) => toggleDescanso(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+          <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3 }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>En el descanso</span>
+            <span style={{ fontSize: 11, color: 'var(--gris-mid)' }}>Se muestra en el {minutoDescanso(dur)}' y cuenta {Math.floor(dur / 2)}' para cada jugador</span>
+          </span>
+        </label>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
         <div className="form-group">
           <label className="label">Minuto</label>
