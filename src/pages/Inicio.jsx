@@ -3,448 +3,321 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
 import { CLUB, COMPETITION_LABEL, COMPETITION } from '../config/club'
 import { useStandings } from '../hooks/useStandings'
-import { matchResult, matchSides } from '../lib/match'
+import { matchResult, matchSides, ourScore, isHome, rivalName, teamInitials } from '../lib/match'
 import TeamCrest from '../components/TeamCrest'
+import { ResultCard } from '../components/MatchCard'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 function initials(nombre = '') {
-  return nombre
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || '?'
+  return nombre.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'
 }
 
-function Avatar({ jugador, size = 'sm' }) {
-  const dim = size === 'sm' ? 32 : size === 'md' ? 42 : 64
-  const fs = size === 'sm' ? 12 : size === 'md' ? 15 : 22
-
+function Avatar({ jugador }) {
   return (
-    <div
-      className={`avatar avatar-${size}`}
-      style={{ overflow: 'hidden', padding: 0, width: dim, height: dim, flexShrink: 0 }}
-    >
-      {jugador?.foto_url ? (
-        <img
-          src={jugador.foto_url}
-          alt={jugador.nombre || 'Jugador'}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-        />
-      ) : (
-        <span style={{ fontSize: fs }}>{initials(jugador?.nombre)}</span>
-      )}
+    <div className="avatar avatar-sm" style={{ overflow: 'hidden', padding: 0, width: 32, height: 32, flexShrink: 0 }}>
+      {jugador?.foto_url
+        ? <img src={jugador.foto_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+        : <span style={{ fontSize: 12 }} aria-hidden="true">{initials(jugador?.nombre)}</span>}
     </div>
   )
 }
 
-function formatFecha(fecha) {
-  if (!fecha) return '-'
-  const d = new Date(`${fecha}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return '-'
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-}
-
-const resultadoPartido = (p) => matchResult(p) || 'empate'
-
-function getCountdownLabel(fecha, hora, now) {
-  const matchDate = new Date(`${fecha}T${hora}:00`);
-  const diffMs = matchDate - now;
-
-  if (Number.isNaN(matchDate.getTime())) {
-    return { label: 'Fecha pendiente', dias: 0, horas: 0, pasado: false };
-  }
-
-  const pasado = diffMs < 0;
-
-  // Horas absolutas para calcular cuándo mostrar "Faltan 23h" en la etiqueta pequeña
-  const horasTotales = Math.floor(diffMs / (1000 * 60 * 60));
-  const diasRestantes = Math.floor(horasTotales / 24);
-
-  // Horas sueltas (0-23) para que el contador grande muestre "1 día y 6h"
-  const horasSueltas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  let label = 'Próximamente';
-
-  if (pasado) {
-    label = 'En juego / Finalizado';
-  } else if (horasTotales <= 24) {
-    const esHoy = matchDate.toDateString() === now.toDateString();
-    label = esHoy ? `Hoy · faltan ${horasTotales}h` : `Faltan ${horasTotales}h`;
-  } else {
-    label = diasRestantes === 1 ? 'Falta 1 día' : `Faltan ${diasRestantes} días`;
-  }
-
-  // IMPORTANTE: Devolvemos horasSueltas en la variable "horas" para el componente
-  return { label, dias: diasRestantes, horas: horasSueltas, pasado };
-}
-
-export default function Inicio() {
+/** Real link (opens in a new tab, works with the keyboard) that navigates inside the app. */
+function AppLink({ to, children, ...rest }) {
   const nav = useNavigate()
-  const { jugadores = [], partidos = [], stats = [], loading, store } = useStore()
-  const { ownRow } = useStandings()
-  const [ahora, setAhora] = useState(new Date())
+  const onClick = (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
+    nav(to)
+  }
+  return <a href={to} onClick={onClick} {...rest}>{children}</a>
+}
+
+const fechaLarga = (fecha) => {
+  const d = new Date(`${fecha}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  const txt = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+  return txt.charAt(0).toUpperCase() + txt.slice(1)
+}
+
+/** Time left until kick-off. */
+function cuentaAtras(fecha, hora, now) {
+  const inicio = new Date(`${fecha}T${hora || '00:00'}:00`)
+  if (Number.isNaN(inicio.getTime())) return { label: 'Fecha por confirmar' }
+  const ms = inicio - now
+  if (ms <= 0) return { label: 'En juego o pendiente de resultado', live: true }
+  const horas = Math.floor(ms / 3.6e6)
+  const dias = Math.floor(horas / 24)
+  const esHoy = inicio.toDateString() === now.toDateString()
+  return {
+    label: esHoy ? 'Hoy' : dias === 0 ? 'Mañana' : dias === 1 ? 'Falta 1 día' : `Faltan ${dias} días`,
+    dias, horas: horas % 24, minutos: Math.floor((ms % 3.6e6) / 6e4),
+  }
+}
+
+const LETRA = { victoria: 'V', empate: 'E', derrota: 'D' }
+const NOMBRE_RESULTADO = { victoria: 'Victoria', empate: 'Empate', derrota: 'Derrota' }
+const byDate = (a, b) => String(a.fecha).localeCompare(String(b.fecha)) || (a.jornada ?? 0) - (b.jornada ?? 0)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sections
+// ─────────────────────────────────────────────────────────────────────────────
+function Hero({ temporada, children }) {
+  const { photo } = CLUB
+  return (
+    <section className="home-hero anim-scale" aria-labelledby="home-club">
+      {photo && (
+        <picture className="home-hero__bg" aria-hidden="true">
+          <source type="image/webp" srcSet={`${photo.webp640} 640w, ${photo.webp1200} 1200w`} sizes="(min-width: 960px) 1080px, 100vw" />
+          <img src={photo.jpg} alt="" decoding="async" fetchpriority="high" />
+        </picture>
+      )}
+      <div className="home-hero__id">
+        <img className="home-hero__crest" src={CLUB.crest} alt={`Escudo del ${CLUB.name}`} width="128" height="128" />
+        <div style={{ minWidth: 0 }}>
+          <p className="home-hero__eyebrow">{COMPETITION_LABEL}</p>
+          <h1 id="home-club" className="home-hero__name">{CLUB.name}</h1>
+          <p className="home-hero__season">{COMPETITION.region} · Temporada {temporada?.nombre?.match(/\d{4}\/\d{2}/)?.[0] || COMPETITION.season}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function SeasonStats({ fila, totalEquipos }) {
+  const jugados = fila?.pj || 0
+  const stats = [
+    { k: 'pos', label: 'Posición', value: jugados ? `${fila.pos}º` : '–', sub: totalEquipos > 1 ? `de ${totalEquipos} equipos` : null, main: true },
+    { k: 'pts', label: 'Puntos', value: fila ? fila.pts : '–', sub: jugados ? `${jugados} jugados` : null },
+    { k: 'gf', label: 'Goles a favor', short: 'A favor', value: fila ? fila.gf : '–' },
+    { k: 'gc', label: 'Goles en contra', short: 'En contra', value: fila ? fila.gc : '–' },
+  ]
+  return (
+    <>
+      <dl className="home-stats" aria-label="Clasificación del club">
+        {stats.map((s) => (
+          <div key={s.k} className={`home-stat${s.main ? ' home-stat--main' : ''}`}>
+            <dt><span aria-hidden="true">{s.short || s.label}</span><span className="sr-only">{s.label}</span></dt>
+            <dd>{s.value}{s.sub && <small>{s.sub}</small>}</dd>
+          </div>
+        ))}
+      </dl>
+      {jugados > 0 && (
+        <p className="home-record">
+          <b>{fila.pg}</b> victorias · <b>{fila.pe}</b> empates · <b>{fila.pp}</b> derrotas · diferencia <b>{fila.dg > 0 ? `+${fila.dg}` : fila.dg}</b>
+        </p>
+      )}
+    </>
+  )
+}
+
+function NextMatch({ partido, ahora, crestFor }) {
+  if (!partido) {
+    return (
+      <section className="card" aria-labelledby="home-next">
+        <div className="section-head"><h2 id="home-next">Próximo partido</h2><AppLink className="link-more" to="/partidos">Calendario →</AppLink></div>
+        <p style={{ color: 'var(--home-muted)' }}>Todavía no hay ningún partido programado.</p>
+      </section>
+    )
+  }
+  const { home, away } = matchSides(partido, crestFor)
+  const cd = cuentaAtras(partido.fecha, partido.hora, ahora)
+  const fecha = fechaLarga(partido.fecha)
+  return (
+    <section className="home-next hero-navy anim-fade-up anim-delay-1" aria-labelledby="home-next">
+      <div className="home-next__top">
+        <h2 id="home-next" className="home-next__label">Próximo partido</h2>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span className="home-chip">{partido.amistoso ? 'Amistoso' : `Jornada ${partido.jornada}`}</span>
+          <span className={`home-chip${cd.live ? ' home-chip--live' : ''}`}>{cd.label}</span>
+        </div>
+      </div>
+
+      <div className="home-next__teams">
+        {[home, away].map((side, i) => (
+          <div key={i} className={`home-next__team${side.ours ? ' home-next__team--ours' : ''}`} style={{ order: i === 0 ? 0 : 2 }}>
+            <TeamCrest src={side.crest} name={side.name} size={64} />
+            <span>{side.name}</span>
+          </div>
+        ))}
+        <div className="home-next__mid" style={{ order: 1 }}>
+          <span className="home-next__vs">{isHome(partido) ? 'En casa' : 'Fuera'}</span>
+          <span className="home-next__time">{partido.hora || '--:--'}</span>
+          {!cd.live && cd.dias != null && (
+            <span className="home-count" aria-label={`Faltan ${cd.dias} días y ${cd.horas} horas`}>
+              {cd.dias > 0 && <><b>{cd.dias}</b><span>d</span></>}
+              <b>{cd.horas}</b><span>h</span>
+              {cd.dias === 0 && <><b>{cd.minutos}</b><span>min</span></>}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <dl className="home-next__info">
+        <div><dt>Fecha</dt><dd>{fecha || 'Por confirmar'}</dd></div>
+        <div><dt>Hora</dt><dd>{partido.hora || 'Por confirmar'}</dd></div>
+        <div className="wide"><dt>Campo</dt><dd>{partido.campo || 'Por confirmar'}</dd></div>
+      </dl>
+
+      <div className="home-next__cta">
+        <AppLink className="btn-light" to={`/partido/${partido.id}`} aria-label={`Ver el partido contra ${rivalName(partido)}`}>Ver partido</AppLink>
+        <AppLink className="btn-outline-light" to="/partidos">Calendario</AppLink>
+      </div>
+    </section>
+  )
+}
+
+function FormStrip({ partidos, crestFor }) {
+  const huecos = Array.from({ length: Math.max(0, 5 - partidos.length) })
+  return (
+    <section className="card anim-fade-up anim-delay-2" aria-labelledby="home-form">
+      <div className="section-head">
+        <h2 id="home-form">Forma</h2>
+        <AppLink className="link-more" to="/clasificacion">Clasificación →</AppLink>
+      </div>
+      {!partidos.length ? (
+        <p style={{ color: 'var(--home-muted)' }}>Aún no se ha jugado ningún partido de liga.</p>
+      ) : (
+        <>
+          <ol className="form-strip" aria-label="Últimos cinco partidos de liga, del más antiguo al más reciente">
+            {huecos.map((_, i) => (
+              <li key={`h${i}`} className="form-item" aria-hidden="true">
+                <span style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}><span className="form-badge form-badge--vacio">–</span></span>
+              </li>
+            ))}
+            {partidos.map((p) => {
+              const r = matchResult(p)
+              const { nuestros, rivales } = ourScore(p)
+              const rival = rivalName(p)
+              return (
+                <li key={p.id} className="form-item">
+                  <AppLink to={`/partido/${p.id}`} aria-label={`${NOMBRE_RESULTADO[r]} ${nuestros}-${rivales} ${isHome(p) ? 'contra' : 'en casa del'} ${rival}, jornada ${p.jornada}`}>
+                    <span className={`form-badge form-badge--${r}`} aria-hidden="true">{LETRA[r]}</span>
+                    <span className="form-item__score" aria-hidden="true">{nuestros}-{rivales}</span>
+                    <span className="form-item__rival" aria-hidden="true" title={rival}>
+                      {crestFor(rival) || p.escudo_rival_url
+                        ? <TeamCrest src={p.escudo_rival_url || crestFor(rival)} name={rival} size={18} />
+                        : teamInitials(rival)}
+                    </span>
+                  </AppLink>
+                </li>
+              )
+            })}
+          </ol>
+          <div className="form-legend" aria-hidden="true"><span>← Más antiguo</span><span>Más reciente →</span></div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function RecentResults({ partidos }) {
+  return (
+    <section className="card anim-fade-up anim-delay-3" aria-labelledby="home-results">
+      <div className="section-head">
+        <h2 id="home-results">Últimos resultados</h2>
+        <AppLink className="link-more" to="/partidos">Ver todos →</AppLink>
+      </div>
+      {!partidos.length ? (
+        <p style={{ color: 'var(--home-muted)' }}>Todavía no hay partidos jugados.</p>
+      ) : (
+        <ul className="home-results" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {partidos.map((p) => (
+            <li key={p.id}>
+              <AppLink to={`/partido/${p.id}`} aria-label={`Ver el partido ${p.local} ${p.goles_local}-${p.goles_visitante} ${p.visitante}`}>
+                <ResultCard partido={p} />
+              </AppLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function Leaders({ jugadores, campo, titulo, id, ruta, vacio }) {
+  const lista = jugadores.filter((j) => j[campo] > 0).sort((a, b) => b[campo] - a[campo]).slice(0, 4)
+  const max = Math.max(1, ...lista.map((j) => j[campo]))
+  return (
+    <section className="card anim-fade-up anim-delay-4" aria-labelledby={id}>
+      <div className="section-head">
+        <h2 id={id}>{titulo}</h2>
+        <AppLink className="link-more" to={ruta}>Ver todos →</AppLink>
+      </div>
+      {!lista.length ? <p style={{ color: 'var(--home-muted)' }}>{vacio}</p> : (
+        <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {lista.map((j, i) => (
+            <li key={j.id} className="scorer">
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 18, minWidth: 18, textAlign: 'center', color: i === 0 ? 'var(--accent)' : 'var(--home-muted)' }}>{i + 1}</span>
+              <Avatar jugador={j} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.nombre}</div>
+                <div style={{ fontSize: 11, color: 'var(--home-muted)' }}>{j.posicion || '—'}</div>
+              </div>
+              <div className="bar-wrap" style={{ maxWidth: 70 }} aria-hidden="true">
+                <div className="bar-fill" style={{ width: `${Math.round((j[campo] / max) * 100)}%` }} />
+              </div>
+              <span style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', minWidth: 24, textAlign: 'right' }}>{j[campo]}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
+export default function Inicio() {
+  const { jugadores = [], partidos = [], stats = [], loading, store, temporada } = useStore()
+  const { ownRow, table = [], equipos = [] } = useStandings()
+  const [ahora, setAhora] = useState(() => new Date())
 
   useEffect(() => {
-    const t = setInterval(() => setAhora(new Date()), 1000)
+    const t = setInterval(() => setAhora(new Date()), 30000)
     return () => clearInterval(t)
   }, [])
 
   const data = useMemo(() => {
-    const nuestro = ownRow ? { pts: ownRow.pts, posCalculada: ownRow.pj ? ownRow.pos : '-' } : null
-
-    const idsAmistosos = new Set(
-      partidos.filter((p) => p.amistoso).map((p) => p.id)
-    )
-
-    const statsCompeticion = stats.filter((s) => !idsAmistosos.has(s.partido_id))
-    const totalGoles = statsCompeticion.reduce((acc, s) => acc + (s.goles || 0), 0)
-
+    const amistosos = new Set(partidos.filter((p) => p.amistoso).map((p) => p.id))
+    const statsLiga = stats.filter((s) => !amistosos.has(s.partido_id))
     const totales = jugadores.map((j) => {
-      const ss = statsCompeticion.filter((s) => s.jugador_id === j.id)
-      return {
-        ...j,
-        goles: ss.reduce((a, s) => a + (s.goles || 0), 0),
-        asistencias: ss.reduce((a, s) => a + (s.asistencias || 0), 0),
-      }
+      const ss = statsLiga.filter((s) => s.jugador_id === j.id)
+      return { ...j, goles: ss.reduce((a, s) => a + (s.goles || 0), 0), asistencias: ss.reduce((a, s) => a + (s.asistencias || 0), 0) }
     })
-
-    const goleador = [...totales].sort((a, b) => b.goles - a.goles)[0]
-    const asistente = [...totales].sort((a, b) => b.asistencias - a.asistencias)[0]
-
-    const nuestrosPartidos = partidos
-
-    // Calcular resultados reales desde partidos (no desde clasificación manual)
-    const jugados = nuestrosPartidos.filter(p => p.jugado && !p.amistoso)
-    const resPartidos = jugados.map(p => resultadoPartido(p))
-    const pgReal = resPartidos.filter(r => r === 'victoria').length
-    const peReal = resPartidos.filter(r => r === 'empate').length
-    const ppReal = resPartidos.filter(r => r === 'derrota').length
-    const pjReal = jugados.length
-
-    const ultimos = [...nuestrosPartidos]
-      .filter((p) => p.jugado)
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-      .slice(0, 3)
-
-    const proximos = [...nuestrosPartidos]
-      .filter((p) => !p.jugado)
-      .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
-
-    const proximo = proximos[0] || null
-
-    return {
-      nuestro,
-      totalGoles,
-      totales,
-      goleador,
-      asistente,
-      ultimos,
-      proximo,
-      pgReal, peReal, ppReal, pjReal,
-    }
-  }, [jugadores, partidos, stats, ownRow])
+    const jugados = partidos.filter((p) => p.jugado).sort(byDate)
+    const forma = jugados.filter((p) => !p.amistoso).slice(-5)
+    const ultimos = [...jugados].reverse().slice(0, 3)
+    const proximo = partidos.filter((p) => !p.jugado).sort(byDate)[0] || null
+    return { totales, forma, ultimos, proximo }
+  }, [jugadores, partidos, stats])
 
   if (loading) {
-    return (
-      <div className="page">
-        <div className="empty" style={{ marginTop: '3rem' }}>
-          Cargando datos...
-        </div>
-      </div>
-    )
+    return <div className="page"><div className="empty" style={{ marginTop: '3rem' }} role="status">Cargando datos...</div></div>
   }
 
-  const { nuestro, totalGoles, totales, goleador, asistente, ultimos, proximo, pgReal, peReal, ppReal, pjReal } = data
-  const topGoleadores = [...totales].sort((a, b) => b.goles - a.goles).filter((j) => j.goles > 0).slice(0, 4)
-  const maxGoles = Math.max(...totales.map((x) => x.goles || 0), 1)
+  const { totales, forma, ultimos, proximo } = data
 
   return (
-    <div className="page">
-      {/* Hero principal */}
-      <section
-        className="anim-scale"
-        style={{
-          background: 'linear-gradient(135deg,#01153A 0%,#163a72 60%,#295A98 100%)',
-          borderRadius: 20,
-          padding: '1.2rem',
-          marginBottom: '1rem',
-          border: '1px solid rgba(159,194,236,.25)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
-          <img
-            src="/escudo.png"
-            alt={`Escudo ${CLUB.name}`}
-            style={{ width: 78, height: 78, objectFit: 'contain', flexShrink: 0 }}
-          />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                fontFamily: 'Bebas Neue',
-                fontSize: 30,
-                color: '#fff',
-                letterSpacing: '.04em',
-                lineHeight: 1,
-              }}
-            >
-              {CLUB.name}
-            </div>
-            <div
-              style={{
-                color: '#b5cbe6',
-                fontSize: 10,
-                letterSpacing: '.10em',
-                textTransform: 'uppercase',
-                marginTop: 4,
-              }}
-            >
-              {COMPETITION_LABEL} · {COMPETITION.season}
-            </div>
-          </div>
+    <div className="page home">
+      <Hero temporada={temporada}>
+        <SeasonStats fila={ownRow} totalEquipos={table.length || equipos.length} />
+      </Hero>
+      <div className="home-grid">
+        <div className="home-col">
+          <NextMatch partido={proximo} ahora={ahora} crestFor={store.crestFor} />
+          <RecentResults partidos={ultimos} />
         </div>
-
-        <div className="grid-3" style={{ marginTop: 12 }}>
-          {[
-            [`${nuestro?.posCalculada ?? '-'}º`, 'Posición'],
-            [`${nuestro?.pts ?? 0}`, 'Puntos'],
-            [`${pgReal}-${peReal}-${ppReal}`, 'V-E-D'],
-          ].map(([valor, label]) => (
-            <div
-              key={label}
-              style={{
-                background: 'rgba(255,255,255,.07)',
-                borderRadius: 10,
-                padding: '8px 10px',
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: 'white', lineHeight: 1 }}>
-                {valor}
-              </div>
-              <div style={{ fontSize: 10, color: '#cfdef0', marginTop: 2, letterSpacing: '.06em' }}>{label}</div>
-            </div>
-          ))}
+        <div className="home-col">
+          <FormStrip partidos={forma} crestFor={store.crestFor} />
+          <Leaders jugadores={totales} campo="goles" titulo="Goleadores" id="home-goles" ruta="/estadisticas" vacio="Aún no hay goles registrados en liga." />
+          <Leaders jugadores={totales} campo="asistencias" titulo="Asistentes" id="home-asist" ruta="/estadisticas" vacio="Aún no hay asistencias registradas en liga." />
         </div>
-      </section>
-
-      {/* Próximo partido */}
-      {proximo ? (
-        (() => {
-                    const cd = getCountdownLabel(proximo.fecha, proximo.hora, ahora)
-
-          return (
-            <section
-              className="card anim-fade-up anim-delay-1"
-              style={{
-                marginBottom: '1rem',
-                background: 'linear-gradient(135deg,#0a2350 0%,#295A98 100%)',
-                  border: 'none',
-                color: 'white',
-                              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--on-navy)', fontWeight: 700 }}>
-                  Próximo partido · {proximo.amistoso ? 'Amistoso' : `Jornada ${proximo.jornada ?? '-'}`}
-                </div>
-                <span
-                  className="badge"
-                  style={{
-                    background: cd.pasado ? 'var(--danger)' : 'rgba(255,255,255,.15)',
-                    color: '#fff',
-                    fontWeight: 700,
-                  }}
-                >
-                  {cd.label}
-                </span>
-              </div>
-
-              {/* Escudos enfrentados (local a la izquierda) */}
-              {(() => {
-                const { home, away } = matchSides(proximo, store.crestFor)
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    {[home, away].map((side, i) => (
-                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, order: i === 0 ? 0 : 2 }}>
-                        <TeamCrest src={side.crest} name={side.name} size={50} />
-                        <div style={{ fontSize: 12, fontWeight: side.ours ? 700 : 500, textAlign: 'center', lineHeight: 1.2 }}>{side.name}</div>
-                      </div>
-                    ))}
-                    <div style={{ order: 1, fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--on-navy)' }}>vs</div>
-                  </div>
-                )
-              })()}
-
-              {!cd.pasado && cd.dias > 0 && (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-                  <span style={{ fontFamily: 'Bebas Neue', fontSize: 48, color: 'white', lineHeight: 1 }}>
-                    {cd.dias}
-                  </span>
-                  <span style={{ fontSize: 14, color: '#d3e1f2' }}>días</span>
-                  {cd.horas > 0 && (
-                    <>
-                      <span style={{ fontFamily: 'Bebas Neue', fontSize: 30, color: 'var(--on-navy)', lineHeight: 1 }}>{cd.horas}</span>
-                      <span style={{ fontSize: 12, color: '#d3e1f2' }}>h</span>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, color: '#dce8f6' }}>
-                <span>📅 {formatFecha(proximo.fecha)}</span>
-                <span>⏰ {proximo.hora || '--:--'}</span>
-                <span>📍 {proximo.campo || 'Campo pendiente'}</span>
-              </div>
-            </section>
-          )
-        })()
-      ) : (
-        <section className="card anim-fade-up anim-delay-1" style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: 20, color: 'var(--primary)', marginBottom: 8 }}>Próximo partido</h2>
-          <p style={{ color: 'var(--gris-mid)' }}>Aún no hay partidos próximos programados.</p>
-        </section>
-      )}
-
-      {/* Métricas */}
-      <section className="grid-4 anim-fade-up anim-delay-2" style={{ marginBottom: '1rem' }}>
-        {[
-          ['Goles', totalGoles, `${pjReal} jornadas`],
-          ['Victorias', pgReal, `de ${pjReal} jugados`],
-          ['Goleador', goleador?.goles ?? 0, goleador?.nombre?.split(' ')[0] || '-'],
-          ['Asistente', asistente?.asistencias ?? 0, asistente?.nombre?.split(' ')[0] || '-'],
-        ].map(([label, value, sub]) => (
-          <article key={label} className="metric-card">
-            <div className="metric-label">{label}</div>
-            <div className="metric-value">{value}</div>
-            <div className="metric-sub">{sub}</div>
-          </article>
-        ))}
-      </section>
-
-      {/* Últimos partidos */}
-      <section className="card anim-fade-up anim-delay-3" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 20, color: 'var(--primary)' }}>Últimos partidos</h2>
-          <button
-            onClick={() => nav('/partidos')}
-            style={{ background: 'none', border: 'none', color: 'var(--primary-mid)', fontSize: 13, fontWeight: 700 }}
-          >
-            Ver todos →
-          </button>
-        </div>
-
-        {!ultimos.length ? (
-          <p style={{ color: 'var(--gris-mid)' }}>Todavía no hay partidos jugados.</p>
-        ) : (
-          ultimos.map((p, i) => {
-            const r = resultadoPartido(p)
-            const rival = p.local === CLUB.name ? p.visitante : p.local
-
-            return (
-              <div
-                key={p.id}
-                onClick={() => nav(`/partido/${p.id}`)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 0',
-                  borderBottom: i < ultimos.length - 1 ? '1px solid #e8eff8' : 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <div
-                  style={{
-                    width: 4,
-                    height: 36,
-                    borderRadius: 2,
-                    flexShrink: 0,
-                    background:
-                      r === 'victoria'
-                        ? '#22a05a'
-                        : r === 'derrota'
-                          ? '#c0392b'
-                          : '#e0a020',
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{p.local === CLUB.name ? 'vs.' : 'en'} {rival || 'Rival pendiente'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>
-                    {p.amistoso ? 'Amistoso' : `Jornada ${p.jornada ?? '-'}`} · {formatFecha(p.fecha)} · {p.hora || '--:--'}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="score-box">
-                    {p.goles_local ?? 0}–{p.goles_visitante ?? 0}
-                  </span>
-                  <span className={`tag-${r}`}>{r === 'victoria' ? 'V' : r === 'derrota' ? 'D' : 'E'}</span>
-                </div>
-              </div>
-            )
-          })
-        )}
-      </section>
-
-      {/* Top goleadores */}
-      <section className="card anim-fade-up anim-delay-4">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 20, color: 'var(--primary)' }}>Top goleadores</h2>
-          <button
-            onClick={() => nav('/estadisticas')}
-            style={{ background: 'none', border: 'none', color: 'var(--primary-mid)', fontSize: 13, fontWeight: 700 }}
-          >
-            Ver todos →
-          </button>
-        </div>
-
-        {!topGoleadores.length ? (
-          <p style={{ color: 'var(--gris-mid)' }}>Aún no hay goles registrados en competición.</p>
-        ) : (
-          topGoleadores.map((j, i) => (
-            <div
-              key={j.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 0',
-                borderBottom: i < topGoleadores.length - 1 ? '1px solid #e8eff8' : 'none',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'Bebas Neue',
-                  fontSize: 18,
-                  color: ['#c8a800', '#909090', '#a06030', '#ddd'][i] || '#ccc',
-                  minWidth: 18,
-                  textAlign: 'center',
-                }}
-              >
-                {i + 1}
-              </div>
-              <Avatar jugador={j} size="sm" />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{j.nombre}</div>
-                <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>{j.posicion || '—'}</div>
-              </div>
-              <div className="bar-wrap" style={{ maxWidth: 70 }}>
-                <div className="bar-fill" style={{ width: `${Math.round(((j.goles || 0) / maxGoles) * 100)}%` }} />
-              </div>
-              <div
-                style={{
-                  fontFamily: 'Bebas Neue',
-                  fontSize: 22,
-                  color: 'var(--primary)',
-                  minWidth: 24,
-                  textAlign: 'right',
-                }}
-              >
-                {j.goles || 0}
-              </div>
-            </div>
-          ))
-        )}
-      </section>
+      </div>
     </div>
   )
 }
