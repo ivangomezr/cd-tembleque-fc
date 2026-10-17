@@ -9,6 +9,12 @@ import { supabase, SUPABASE_READY } from './supabase'
 import { CLUB, COMPETITION, STORAGE_PREFIX, DEFAULT_KIT } from '../config/club'
 import { computePlayerMinutes, statsFromEvents, startersFromLineup } from './timeline'
 import { computeStandings, ownMatchesAsResults } from './standings'
+import { dbError } from './dbErrors'
+import {
+  ValidationError, validarJugador, validarTemporada, validarEquipo, validarPartido, validarPartidoLiga,
+  validarConvocados, validarMvp, validarAlineacion, validarEvento, validarBorrarEvento, validarEstadistica,
+  validarVoto, textoOk, urlOk,
+} from './validation'
 
 const USE_SUPABASE = SUPABASE_READY
 
@@ -25,13 +31,6 @@ function save(k, val) {
 }
 const nextId = (rows) => Math.max(0, ...rows.map((r) => Number(r.id) || 0)) + 1
 const matches = (row, where) => Object.entries(where).every(([k, v]) => row[k] === v)
-
-/** Wraps a Supabase/PostgREST error with a readable message (shown to admins). */
-function dbError(op, table, error) {
-  const e = new Error(`${error.message || 'Error de base de datos'}${error.code ? ` (${error.code})` : ''} — ${op} ${table}`)
-  e.cause = error
-  return e
-}
 
 /**
  * Tiny data adapter with the same API for Supabase and localStorage.
@@ -228,6 +227,8 @@ export const store = {
   },
 
   async updateTemporada(id, patch) {
+    const zonas = ['zona_ascenso', 'zona_promocion', 'zona_descenso'].some((k) => k in patch)
+    patch = validarTemporada(patch, { numEquipos: zonas ? _equipos.length : null })
     await db.update('temporadas', { id }, patch)
     if (_temporadaActiva?.id === id) _temporadaActiva = { ..._temporadaActiva, ...patch }
     await log('✏️ Editó', 'Temporada', _temporadaActiva?.nombre)
@@ -235,6 +236,7 @@ export const store = {
   },
 
   async cerrarTemporadaYCrearNueva(nombreNueva, añoNuevo) {
+    ;({ nombre: nombreNueva } = validarTemporada({ nombre: nombreNueva, año: añoNuevo }, { temporadas: await store.getTemporadas() }))
     const prev = _temporadaActiva
     await db.update('temporadas', { activa: true }, { activa: false })
     const nueva = await db.insert('temporadas', {
@@ -287,12 +289,14 @@ export const store = {
 
   // ── Players ────────────────────────────────────────────────────────────────
   async addJugador(j) {
+    j = validarJugador(j, { jugadores: _jugadores, local: !USE_SUPABASE })
     const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible' })
     _jugadores = [..._jugadores, row]
     await log('➕ Añadió', 'Jugador', j.nombre)
     notify()
   },
   async updateJugador(id, data) {
+    data = validarJugador(data, { jugadores: _jugadores, id, local: !USE_SUPABASE })
     const patch = {
       nombre: data.nombre,
       posicion: data.posicion,
@@ -316,7 +320,17 @@ export const store = {
   async deleteJugador(id) {
     const j = _jugadores.find((x) => x.id === id)
     await db.remove('jugadores', { id })
-    if (!USE_SUPABASE) await db.remove('estadisticas', { jugador_id: id })
+    if (!USE_SUPABASE) {
+      // The database does this with a trigger (validacion.jugadores_limpiar)
+      await db.remove('estadisticas', { jugador_id: id })
+      for (const p of _partidos.filter((x) => (x.convocados || []).includes(id))) {
+        await db.update('partidos', { id: p.id }, { convocados: p.convocados.filter((x) => x !== id) })
+      }
+      for (const a of load('alineaciones', []).filter((x) => (x.jugadores || []).some((s) => s?.jugador_id === id))) {
+        await db.update('alineaciones', { id: a.id }, { jugadores: a.jugadores.map((s) => (s?.jugador_id === id ? { ...s, jugador_id: null } : s)) })
+      }
+    }
+    _partidos = _partidos.map((p) => ((p.convocados || []).includes(id) ? { ...p, convocados: p.convocados.filter((x) => x !== id) } : p))
     _jugadores = _jugadores.filter((x) => x.id !== id)
     _stats = _stats.filter((s) => s.jugador_id !== id)
     await log('🗑️ Eliminó', 'Jugador', j?.nombre || String(id))
@@ -328,6 +342,7 @@ export const store = {
 
   // ── Our matches ────────────────────────────────────────────────────────────
   async addPartido(p) {
+    p = validarPartido(p, { partidos: _partidos, partidosLiga: _partidosLiga, equipos: _equipos, temporada: _temporadaActiva, local: !USE_SUPABASE })
     const row = await db.insert('partidos', {
       jornada: p.jornada,
       fecha: p.fecha,
@@ -356,6 +371,20 @@ export const store = {
     const patch = Object.fromEntries(fields.filter((f) => data[f] !== undefined).map((f) => [f, data[f]]))
     if (patch.hora === '') patch.hora = null
     const before = _partidos.find((x) => x.id === id)
+    if (!before) throw new ValidationError('El partido ya no existe. Recarga la página.')
+    const core = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'campo', 'jugado', 'goles_local', 'goles_visitante', 'amistoso', 'escudo_rival_url']
+    if (core.some((f) => f in patch)) {
+      const eventos = 'goles_local' in patch || 'goles_visitante' in patch ? await store.getEventos(id) : []
+      const clean = validarPartido({ ...before, ...patch }, {
+        partidos: _partidos, partidosLiga: _partidosLiga, equipos: _equipos, temporada: _temporadaActiva, id, stats: _stats, eventos, local: !USE_SUPABASE,
+      })
+      core.filter((f) => f in patch).forEach((f) => { patch[f] = clean[f] })
+    }
+    if ('mvp_jugador_id' in patch) {
+      patch.mvp_jugador_id = validarMvp(patch.mvp_jugador_id, { partido: { ...before, ...patch }, stats: _stats, jugadores: _jugadores })
+    }
+    if ('equipacion' in patch && !['local', 'visitante'].includes(patch.equipacion)) throw new ValidationError('Elige una equipación válida.')
+    if ('convocados' in patch) patch.convocados = await store.validarConvocatoria(id, patch.convocados)
     await db.update('partidos', { id }, patch)
     _partidos = _partidos.map((p) => (p.id === id ? { ...p, ...patch } : p))
     await log('✏️ Editó', 'Partido', `J${patch.jornada ?? before?.jornada} ${patch.local ?? before?.local} - ${patch.visitante ?? before?.visitante}`)
@@ -364,7 +393,14 @@ export const store = {
     notify()
   },
 
+  /** Checks a call-up against the lineup, timeline and stats of the match. */
+  async validarConvocatoria(partido_id, convocados) {
+    const [alineacion, eventos] = await Promise.all([store.getAlineacion(partido_id), store.getEventos(partido_id)])
+    return validarConvocados(convocados, { jugadores: _jugadores, alineacion, eventos, stats: _stats.filter((s) => s.partido_id === partido_id) })
+  },
+
   async updateConvocados(partido_id, convocados) {
+    convocados = await store.validarConvocatoria(partido_id, convocados)
     await db.update('partidos', { id: partido_id }, { convocados })
     _partidos = _partidos.map((p) => (p.id === partido_id ? { ...p, convocados } : p))
     if (_partidos.find((p) => p.id === partido_id)?.jugado) await store.recalcularPartido(partido_id)
@@ -398,16 +434,23 @@ export const store = {
   async getEventos(partido_id) {
     return db.select('eventos_partido', { partido_id })
   },
+  /** Context needed to validate a change to the timeline of a match. */
+  async contextoPartido(partido_id) {
+    const [eventos, alineacion] = await Promise.all([store.getEventos(partido_id), store.getAlineacion(partido_id)])
+    return { partido: _partidos.find((p) => p.id === partido_id), temporada: _temporadaActiva, eventos, alineacion, jugadores: _jugadores }
+  },
+
   async addEvento(ev) {
+    const v = validarEvento(ev, await store.contextoPartido(ev.partido_id))
     const row = await db.insert('eventos_partido', {
       partido_id: ev.partido_id,
-      minuto: Number(ev.minuto) || 0,
-      minuto_extra: Number(ev.minuto_extra) || 0,
-      tipo: ev.tipo,
-      equipo: ev.equipo,
-      jugador_id: ev.jugador_id ? Number(ev.jugador_id) : null,
-      jugador2_id: ev.jugador2_id ? Number(ev.jugador2_id) : null,
-      nombre_rival: ev.nombre_rival?.trim() || null,
+      minuto: v.minuto,
+      minuto_extra: v.minuto_extra,
+      tipo: v.tipo,
+      equipo: v.equipo,
+      jugador_id: v.jugador_id,
+      jugador2_id: v.jugador2_id,
+      nombre_rival: v.nombre_rival,
       temporada_id: tid(),
     })
     await store.recalcularPartido(ev.partido_id)
@@ -416,19 +459,21 @@ export const store = {
     return row
   },
   async updateEvento(id, partido_id, ev) {
+    const v = validarEvento(ev, { ...(await store.contextoPartido(partido_id)), id })
     await db.update('eventos_partido', { id }, {
-      minuto: Number(ev.minuto) || 0,
-      minuto_extra: Number(ev.minuto_extra) || 0,
-      tipo: ev.tipo,
-      equipo: ev.equipo,
-      jugador_id: ev.jugador_id ? Number(ev.jugador_id) : null,
-      jugador2_id: ev.jugador2_id ? Number(ev.jugador2_id) : null,
-      nombre_rival: ev.nombre_rival?.trim() || null,
+      minuto: v.minuto,
+      minuto_extra: v.minuto_extra,
+      tipo: v.tipo,
+      equipo: v.equipo,
+      jugador_id: v.jugador_id,
+      jugador2_id: v.jugador2_id,
+      nombre_rival: v.nombre_rival,
     })
     await store.recalcularPartido(partido_id)
     notify()
   },
   async deleteEvento(id, partido_id) {
+    validarBorrarEvento(id, await store.contextoPartido(partido_id))
     await db.remove('eventos_partido', { id })
     await store.recalcularPartido(partido_id)
     notify()
@@ -499,6 +544,10 @@ export const store = {
 
   // ── Manual stats (saves, or everything when no timeline exists) ────────────
   async upsertStat(data) {
+    const prev = _stats.find((s) => s.jugador_id === data.jugador_id && s.partido_id === data.partido_id) || {}
+    const ctx = await store.contextoPartido(data.partido_id)
+    validarEstadistica({ minutos: 0, titular: false, ...prev, ...data, paradas: data.paradas || 0, goles_encajados: data.goles_encajados || 0 },
+      { ...ctx, stats: _stats })
     const row = {
       jugador_id: data.jugador_id,
       partido_id: data.partido_id,
@@ -529,6 +578,8 @@ export const store = {
     return rows[0] || null
   },
   async saveAlineacion(partido_id, formacion, jugadoresAlin) {
+    const ctx = await store.contextoPartido(partido_id)
+    validarAlineacion(formacion, jugadoresAlin, ctx)
     await db.upsert('alineaciones', [{ partido_id, formacion, jugadores: jugadoresAlin, temporada_id: tid() }], ['partido_id'])
     if (_partidos.find((p) => p.id === partido_id)?.jugado) await store.recalcularPartido(partido_id)
     const p = _partidos.find((x) => x.id === partido_id)
@@ -548,6 +599,7 @@ export const store = {
     } catch (e) { console.warn('[equipos] could not create own team', e) }
   },
   async addEquipo(data) {
+    data = validarEquipo(data, { equipos: _equipos, local: !USE_SUPABASE })
     const row = await db.insert('equipos_liga', {
       nombre: data.nombre.trim(),
       nombre_corto: data.nombre_corto?.trim() || null,
@@ -562,6 +614,7 @@ export const store = {
   },
   async updateEquipo(id, data) {
     const old = _equipos.find((e) => e.id === id)
+    data = validarEquipo({ ...data, escudo_url: data.escudo_url ?? old?.escudo_url ?? null }, { equipos: _equipos, id, local: !USE_SUPABASE })
     const patch = {
       nombre: data.nombre.trim(),
       nombre_corto: data.nombre_corto?.trim() || null,
@@ -599,30 +652,14 @@ export const store = {
 
   // ── League fixtures between other teams ────────────────────────────────────
   async addPartidoLiga(m) {
-    const row = await db.insert('partidos_liga', {
-      jornada: Number(m.jornada),
-      fecha: m.fecha || null,
-      local_id: Number(m.local_id),
-      visitante_id: Number(m.visitante_id),
-      goles_local: Number(m.goles_local) || 0,
-      goles_visitante: Number(m.goles_visitante) || 0,
-      jugado: !!m.jugado,
-      temporada_id: tid(),
-    })
+    const v = validarPartidoLiga(m, { partidosLiga: _partidosLiga, partidos: _partidos, equipos: _equipos, temporada: _temporadaActiva })
+    const row = await db.insert('partidos_liga', { ...v, temporada_id: tid() })
     _partidosLiga = [..._partidosLiga, row]
     notify()
     return row
   },
   async updatePartidoLiga(id, m) {
-    const patch = {
-      jornada: Number(m.jornada),
-      fecha: m.fecha || null,
-      local_id: Number(m.local_id),
-      visitante_id: Number(m.visitante_id),
-      goles_local: Number(m.goles_local) || 0,
-      goles_visitante: Number(m.goles_visitante) || 0,
-      jugado: !!m.jugado,
-    }
+    const patch = validarPartidoLiga(m, { partidosLiga: _partidosLiga, partidos: _partidos, equipos: _equipos, temporada: _temporadaActiva, id })
     await db.update('partidos_liga', { id }, patch)
     _partidosLiga = _partidosLiga.map((x) => (x.id === id ? { ...x, ...patch } : x))
     await log('🏆 Resultado', 'Liga', `J${patch.jornada}`)
@@ -655,6 +692,10 @@ export const store = {
     return { ranking: Object.entries(conteo).map(([votado_id, votos]) => ({ votado_id: Number(votado_id), votos })), visibles: rows }
   },
   async votarMvp(partido_id, votante_id, votado_id) {
+    validarVoto({
+      partido: _partidos.find((p) => p.id === partido_id), votante: _jugadores.find((j) => j.id === votante_id),
+      votadoId: votado_id, stats: _stats, jugadores: _jugadores,
+    })
     await db.upsert('votos_mvp', [{ partido_id, votante_id, votado_id, temporada_id: tid() }], ['partido_id', 'votante_id'])
   },
   async eliminarVotoMvp(partido_id, votante_id) {
@@ -667,10 +708,13 @@ export const store = {
     return list.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
   },
   async addPatrocinador(nombre, archivo) {
+    nombre = nombre ? String(nombre).trim() || null : null
+    if (nombre && !textoOk(nombre, 80)) throw new ValidationError('El nombre del patrocinador admite como máximo 80 caracteres.')
     let imagen_url = null
     if (archivo && USE_SUPABASE) {
       imagen_url = await store.uploadToCloudinary(archivo, 'tembleque/patrocinadores', { maxWidth: 600, maxHeight: 600, quality: 0.8 })
     }
+    if (!urlOk(imagen_url)) throw new ValidationError('La imagen no es válida. Vuelve a subirla.')
     return db.insert('patrocinadores', { nombre, imagen_url })
   },
   async deletePatrocinador(id) {

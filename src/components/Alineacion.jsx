@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Camiseta from './Camiseta'
 import Sheet from './Sheet'
+import { messageFor } from '../lib/dbErrors'
 
 /** Football 11 formations: outfield lines from defence to attack. */
 export const FORMACIONES = {
@@ -81,6 +82,7 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose, kit }) {
   const [{ formacion, slots }, setState] = useState(() => normalizar(inicial))
   const [slotSel, setSlotSel] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
 
   const usados = new Set(slots.map((s) => s.jugador_id).filter(Boolean))
   const cambiarFormacion = (f) => {
@@ -91,12 +93,20 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose, kit }) {
   const asignar = (id) => {
     setState((st) => ({ ...st, slots: st.slots.map((s) => (s === slotSel ? { ...s, jugador_id: id ? Number(id) : null } : s)) }))
     setSlotSel(null)
+    setError('')
   }
   const save = async () => {
     setGuardando(true)
-    await onSave(formacion, slots)
-    setGuardando(false)
-    onClose({ formacion, jugadores: slots })
+    setError('')
+    try {
+      await onSave(formacion, slots)
+      onClose({ formacion, jugadores: slots })
+    } catch (e) {
+      // e.g. a starter removed from the XI who scored or was substituted in the timeline
+      setError(messageFor(e))
+    } finally {
+      setGuardando(false)
+    }
   }
   const pool = (elegibles?.length ? elegibles : jugadores)
   const total = lineas(formacion).length
@@ -111,6 +121,7 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose, kit }) {
       {!elegibles?.length && <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginBottom: 10 }}>💡 Si guardas antes la convocatoria, aquí solo aparecerán los convocados.</p>}
       <Campo slots={slots} jugadores={jugadores} formacion={formacion} onSlotClick={setSlotSel} kit={kit} />
       <div style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '8px 0 12px', textAlign: 'center' }}>{usados.size}/11 titulares · toca una posición para asignar</div>
+      {error && <div className="alert-error">⚠️ {error}</div>}
       <button onClick={save} disabled={guardando} className="btn btn-primary btn-block">{guardando ? 'Guardando…' : 'Guardar alineación'}</button>
 
       {slotSel && (
