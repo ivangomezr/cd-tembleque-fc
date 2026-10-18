@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Sheet from './Sheet'
-import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal } from '../lib/timeline'
+import { EVENT_TYPES, minuteLabel, withRunningScore, scoreFromEvents, isGoal, minutoDescanso, esCambioDescanso } from '../lib/timeline'
 import { limitesMinuto, LIMITS } from '../lib/validation'
 import { messageFor } from '../lib/dbErrors'
 import { CLUB } from '../config/club'
@@ -170,6 +170,9 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
   const playerLabel = isSub ? '↑ Entra' : form.tipo.startsWith('gol') && form.tipo !== 'gol_propia' ? 'Goleador' : form.tipo === 'gol_propia' ? 'Jugador nuestro que marca en propia' : form.tipo === 'penalti_fallado' ? 'Lanzador' : 'Jugador'
 
   const { dur, max: maxMinuto } = limitesMinuto(partido, store.getTemporadaActiva?.())
+  // Half-time substitutions are stored as the first minute of the second half (46')
+  const enDescanso = form.tipo === 'cambio' && esCambioDescanso({ ...form, tipo: 'cambio' }, dur)
+  const toggleDescanso = (on) => setForm((f) => ({ ...f, minuto: on ? minutoDescanso(dur) : '', minuto_extra: '' }))
 
   const save = async () => {
     const m = Number(form.minuto)
@@ -273,11 +276,11 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
         <div className="form-group">
           <label className="label">Minuto</label>
-          <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
+          <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" disabled={enDescanso} value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
         </div>
         <div className="form-group">
           <label className="label">Añadido <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(45+2 → 2)</span></label>
-          <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
+          <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" disabled={enDescanso} value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
         </div>
       </div>
 
