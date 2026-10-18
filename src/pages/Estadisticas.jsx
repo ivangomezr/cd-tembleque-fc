@@ -2,17 +2,10 @@ import { useState } from 'react'
 import { useStore } from '../hooks/useStore'
 import { playerTotals, fmtMin } from '../lib/playerTotals'
 import { COMPETITION } from '../config/club'
+import PlayerAvatar from '../components/PlayerAvatar'
+import AppLink from '../components/AppLink'
 
-const initials = (n = '?') => n.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-function Avatar({ jugador }) {
-  return (
-    <div className="avatar avatar-sm" style={{ overflow: 'hidden', padding: 0, width: 32, height: 32, flexShrink: 0 }}>
-      {jugador?.foto_url
-        ? <img src={jugador.foto_url} alt={jugador.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-        : <span style={{ fontSize: 12 }}>{initials(jugador?.nombre)}</span>}
-    </div>
-  )
-}
+const Avatar = ({ jugador }) => <PlayerAvatar jugador={jugador} size={32} />
 
 const tabs = [
   { key: 'goles', label: '⚽ Goles', color: 'var(--primary)' },
@@ -42,7 +35,7 @@ export default function Estadisticas() {
   return (
     <div className="page anim-fade">
       <h1 className="page-title">Estadísticas</h1>
-      <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginTop: -8, marginBottom: 14 }}>{COMPETITION.name} {COMPETITION.season} · sin amistosos</p>
+      <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginTop: -8, marginBottom: 14 }}>{COMPETITION.name} {COMPETITION.season}</p>
       <div className="grid-4" style={{ marginBottom: '1.25rem' }}>
         {[['Goles', sum('goles'), 'var(--primary)'], ['Asistencias', sum('asistencias'), 'var(--primary-mid)'], ['Amarillas', sum('tarjetas_amarillas'), '#b8860b'], ['Jornadas', jornadas, 'var(--navy)']].map(([l, v, c]) => (
           <div key={l} className="metric-card"><div className="metric-label">{l}</div><div className="metric-value" style={{ color: c }}>{v}</div></div>
@@ -56,7 +49,8 @@ export default function Estadisticas() {
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.25rem' }}>
         {sorted.length === 0 && <div className="empty">Sin datos aún</div>}
         {sorted.map((j, i) => (
-          <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #eef2f8' : 'none', background: i === 0 ? 'var(--primary-pale)' : 'white' }}>
+          <AppLink key={j.id} to={`/jugadores/${j.id}`} className="stat-row" aria-label={`${j.nombre}: ${cur.fmt ? cur.fmt(j[tab]) : j[tab]} ${cur.label.replace(/^\S+\s/, '').toLowerCase()}. Ver ficha`}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #eef2f8' : 'none', background: i === 0 ? 'var(--primary-pale)' : 'white', color: 'inherit', textDecoration: 'none' }}>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, minWidth: 24, textAlign: 'center', color: ['#c8a800', '#909090', '#a06030', '#b9cbe2'][Math.min(i, 3)] }}>{i + 1}</div>
             <Avatar jugador={j} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -68,7 +62,8 @@ export default function Estadisticas() {
             </div>
             <div className="bar-wrap" style={{ maxWidth: 70 }}><div className="bar-fill" style={{ width: `${Math.round((j[tab] / max) * 100)}%`, background: cur.color }} /></div>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: cur.color, minWidth: 34, textAlign: 'right' }}>{cur.fmt ? cur.fmt(j[tab]) : j[tab]}</div>
-          </div>
+            <span aria-hidden="true" style={{ color: 'var(--gris-light)', fontSize: 18 }}>›</span>
+          </AppLink>
         ))}
       </div>
 
@@ -86,7 +81,7 @@ export default function Estadisticas() {
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Avatar jugador={j} />
-                    <div><div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{j.nombre}</div><div style={{ fontSize: 10, color: 'var(--gris-mid)' }}>{j.posicion}</div></div>
+                    <div><AppLink to={`/jugadores/${j.id}`} className="stat-name" style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2, color: 'var(--navy)' }}>{j.nombre}</AppLink><div style={{ fontSize: 10, color: 'var(--gris-mid)' }}>{j.posicion}</div></div>
                   </div>
                 </td>
                 <td style={{ textAlign: 'center' }}>{j.partidos}</td>

@@ -13,21 +13,14 @@ import Sheet from '../components/Sheet'
 import KitPicker from '../components/KitPicker'
 import { KITS, DEFAULT_KIT } from '../config/club'
 import { messageFor } from '../lib/dbErrors'
+import PlayerAvatar from '../components/PlayerAvatar'
 
 const fmt = (str) => new Date(str).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const posOrder = { Portero: 0, Defensa: 1, Centrocampista: 2, Delantero: 3 }
 const byPos = (a, b) => (posOrder[a.posicion] ?? 99) - (posOrder[b.posicion] ?? 99) || (a.dorsal || 99) - (b.dorsal || 99)
 const initials = (n = '?') => n.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
 
-function Avatar({ jugador, size = 32 }) {
-  return (
-    <div className="avatar avatar-sm" style={{ overflow: 'hidden', padding: 0, width: size, height: size, flexShrink: 0 }}>
-      {jugador?.foto_url
-        ? <img src={jugador.foto_url} alt={jugador.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-        : <span style={{ fontSize: size * 0.38 }}>{initials(jugador?.nombre)}</span>}
-    </div>
-  )
-}
+const Avatar = ({ jugador, size = 32 }) => <PlayerAvatar jugador={jugador} size={size} />
 
 const CardIcon = ({ color }) => <span style={{ display: 'inline-block', width: 10, height: 14, background: color, borderRadius: 2, verticalAlign: 'middle' }} />
 
