@@ -39,27 +39,3 @@ export function ResultCard({ partido: p, onClick, actions = null, showTime = fal
     </div>
   )
 }
-
-/** Upcoming-match tile for horizontal carousels. */
-export function UpcomingCard({ partido: p, highlight = false, onClick }) {
-  const { home, away } = matchSides(p, store.crestFor)
-  const rival = home.ours ? away : home
-  return (
-    <div onClick={onClick} className={highlight ? 'hero-navy' : ''} style={{
-      background: highlight ? undefined : 'white', borderRadius: 16, padding: '14px 16px', flexShrink: 0, minWidth: 200,
-      border: `1.5px solid ${highlight ? 'var(--primary)' : '#e6edf6'}`, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
-    }}>
-      <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 20, background: highlight ? 'rgba(255,255,255,0.12)' : 'var(--primary-pale)', color: highlight ? 'var(--on-navy)' : 'var(--primary-mid)' }}>
-        {p.amistoso ? 'Amistoso' : `Jornada ${p.jornada}`} · {home.ours ? 'Casa' : 'Fuera'}
-      </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <TeamCrest src={home.crest} name={home.name} size={32} />
-        <span style={{ fontFamily: 'Bebas Neue', fontSize: 14, color: highlight ? 'var(--on-navy-muted)' : '#bbb' }}>vs</span>
-        <TeamCrest src={away.crest} name={away.name} size={32} />
-      </div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: highlight ? 'white' : 'var(--navy)', lineHeight: 1.2 }}>{rival.name}</div>
-      <div style={{ fontSize: 11, color: highlight ? 'var(--on-navy)' : 'var(--gris-mid)' }}>{fmt(p.fecha)}{p.hora ? ` · ${p.hora}` : ''}</div>
-      <div style={{ fontSize: 11, color: highlight ? 'var(--on-navy-muted)' : 'var(--gris-light)' }}>📍 {p.campo}</div>
-    </div>
-  )
-}

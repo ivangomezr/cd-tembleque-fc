@@ -1,39 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
 import { CLUB, COMPETITION_LABEL, COMPETITION } from '../config/club'
 import { useStandings } from '../hooks/useStandings'
 import { matchResult, matchSides, ourScore, isHome, rivalName, teamInitials } from '../lib/match'
 import TeamCrest from '../components/TeamCrest'
 import { ResultCard } from '../components/MatchCard'
+import PlayerAvatar from '../components/PlayerAvatar'
+import AppLink from '../components/AppLink'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function initials(nombre = '') {
-  return nombre.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'
-}
-
-function Avatar({ jugador }) {
-  return (
-    <div className="avatar avatar-sm" style={{ overflow: 'hidden', padding: 0, width: 32, height: 32, flexShrink: 0 }}>
-      {jugador?.foto_url
-        ? <img src={jugador.foto_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-        : <span style={{ fontSize: 12 }} aria-hidden="true">{initials(jugador?.nombre)}</span>}
-    </div>
-  )
-}
-
-/** Real link (opens in a new tab, works with the keyboard) that navigates inside the app. */
-function AppLink({ to, children, ...rest }) {
-  const nav = useNavigate()
-  const onClick = (e) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-    e.preventDefault()
-    nav(to)
-  }
-  return <a href={to} onClick={onClick} {...rest}>{children}</a>
-}
+const Avatar = ({ jugador }) => <PlayerAvatar jugador={jugador} size={32} />
 
 const fechaLarga = (fecha) => {
   const d = new Date(`${fecha}T00:00:00`)

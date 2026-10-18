@@ -5,6 +5,7 @@ import { haptics } from '../lib/haptics'
 import { useAuth } from '../hooks/useAuth'
 import LoginSheet from './LoginSheet'
 import { CLUB, COMPETITION_LABEL } from '../config/club'
+import PlayerAvatar from './PlayerAvatar'
 
 const tabs = [
   { to: '/', label: 'Inicio', icon: '🏠' },
@@ -108,12 +109,7 @@ export default function Navbar() {
           {/* Jugador activo (solo si logged) */}
           {logged && jugadorActivo && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(159,194,236,0.1)', borderRadius: 20, padding: '4px 10px' }}>
-              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', flexShrink: 0, overflow: 'hidden' }}>
-                {jugadorActivo.foto_url
-                  ? <img src={jugadorActivo.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                  : jugadorActivo.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                }
-              </div>
+              <PlayerAvatar jugador={jugadorActivo} size={22} ring={false} />
               <span style={{ fontSize: 12, color: '#9fc2ec', fontWeight: 600, maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {jugadorActivo.nombre.split(' ')[0]}
               </span>
@@ -194,12 +190,7 @@ export default function Navbar() {
               {/* Info jugador activo */}
               {logged && jugadorActivo && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(41,90,152,0.3)', borderRadius: 12, padding: '10px 12px' }}>
-                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0, overflow: 'hidden' }}>
-                    {jugadorActivo.foto_url
-                      ? <img src={jugadorActivo.foto_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                      : jugadorActivo.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                    }
-                  </div>
+                  <PlayerAvatar jugador={jugadorActivo} size={38} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {jugadorActivo.nombre}
