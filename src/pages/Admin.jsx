@@ -13,20 +13,10 @@ import { haptics } from '../lib/haptics'
 import { enviarNotificacionResultado } from '../lib/push'
 import { validarJugador, validarPartido, validarTemporada, debeMarcarseJugado, LIMITS } from '../lib/validation'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
+import PlayerAvatar from '../components/PlayerAvatar'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
-function Avatar({ jugador, size = 'sm' }) {
-  const dim = size === 'sm' ? 32 : size === 'md' ? 42 : 64
-  const fs = size === 'sm' ? 12 : size === 'md' ? 15 : 22
-  return (
-    <div className={`avatar avatar-${size}`} style={{ overflow: 'hidden', padding: 0, width: dim, height: dim, flexShrink: 0 }}>
-      {jugador?.foto_url
-        ? <img src={jugador.foto_url} alt={jugador.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-        : <span style={{ fontSize: fs }}>{initials(jugador?.nombre || '?')}</span>
-      }
-    </div>
-  )
-}
+const Avatar = ({ jugador, size = 'sm' }) => <PlayerAvatar jugador={jugador} size={size === 'sm' ? 32 : size === 'md' ? 42 : 64} />
 const POSICIONES = ['Portero', 'Defensa', 'Centrocampista', 'Delantero']
 
 // Guard: only admins see the panel. This is UX only — every write is checked

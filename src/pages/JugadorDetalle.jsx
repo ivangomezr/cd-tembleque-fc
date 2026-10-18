@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
 import { useAuth } from '../hooks/useAuth'
 import { playerTotals, fmtMin } from '../lib/playerTotals'
@@ -7,23 +7,13 @@ import { ESTADOS, POS_CLASS, byDorsal, splitName, playerMatchLog, rankIn } from 
 import { ShirtSvg } from '../components/Camiseta'
 import TeamCrest from '../components/TeamCrest'
 import PlayerEditSheet from '../components/PlayerEditSheet'
+import AppLink from '../components/AppLink'
 
 const RES = { victoria: { l: 'V', c: 'var(--res-v)' }, empate: { l: 'E', c: 'var(--res-e)' }, derrota: { l: 'D', c: 'var(--res-d)' } }
 const ROL = { titular: 'Titular', suplente: 'Suplente', 'sin minutos': 'Sin minutos', convocado: 'Convocado' }
 const fecha = (f) => {
   const d = new Date(`${f}T00:00:00`)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-}
-
-/** Real link that navigates inside the app (keeps middle-click / new tab). */
-function AppLink({ to, children, ...rest }) {
-  const nav = useNavigate()
-  return (
-    <a href={to} {...rest} onClick={(e) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
-      e.preventDefault(); nav(to)
-    }}>{children}</a>
-  )
 }
 
 function Stat({ label, value, sub, accent }) {
@@ -137,7 +127,6 @@ export default function JugadorDetalle() {
         <section className="card" aria-labelledby="player-season">
           <div className="section-head">
             <h2 id="player-season">Temporada {temporada?.nombre?.match(/\d{4}\/\d{2}/)?.[0] || ''}</h2>
-            <span style={{ fontSize: 11, color: 'var(--home-muted)' }}>Liga · sin amistosos</span>
           </div>
           <dl className="pstats">
             <Stat label="Partidos" value={j.partidos} sub={jornadasLiga ? `de ${jornadasLiga}` : null} accent />
