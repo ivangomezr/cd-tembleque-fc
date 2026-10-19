@@ -26,3 +26,9 @@ export function avatarSrc(url, size = 40) {
   const px = Math.min(400, Math.max(64, Math.round(size * 2)))
   return { src: `${m[1]}c_thumb,g_face,z_0.65,w_${px},h_${px}/f_auto,q_auto/${m[2]}`, faceCrop: true }
 }
+
+/** Adds a Cloudinary transformation (e.g. 'w_900,f_auto,q_auto'); other URLs unchanged. */
+export function cloudinary(url, transformation) {
+  const m = url ? CLOUDINARY_UPLOAD.exec(url) : null
+  return m ? `${m[1]}${transformation}/${m[2]}` : url
+}

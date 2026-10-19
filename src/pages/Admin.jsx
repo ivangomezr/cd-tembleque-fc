@@ -14,6 +14,7 @@ import { enviarNotificacionResultado } from '../lib/push'
 import { validarJugador, validarPartido, validarTemporada, debeMarcarseJugado, LIMITS } from '../lib/validation'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
 import PlayerAvatar from '../components/PlayerAvatar'
+import { votacionAbierta, mvpCierre } from '../lib/mvp'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
 const Avatar = ({ jugador, size = 'sm' }) => <PlayerAvatar jugador={jugador} size={size === 'sm' ? 32 : size === 'md' ? 42 : 64} />
@@ -545,11 +546,23 @@ function PanelStats({ jugadores, partidos, stats, store }) {
             <button onClick={() => store.recalcularPartido(partidoActual.id).then(() => haptics.success?.(), (e) => window.alert(messageFor(e)))} style={{ marginLeft: 6, background: 'white', border: '1px solid currentColor', color: 'inherit', borderRadius: 8, padding: '2px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>↻ Recalcular</button>
           </div>
           <div className="form-group">
-            <label className="label">⭐ MVP oficial del partido</label>
-            <select className="select" value={mvpSel} onChange={handleMvpChange}>
+            <label className="label" htmlFor="mvp-sel">⭐ MVP del partido</label>
+            {votacionAbierta(partidoActual) ? (
+              <p style={{ fontSize: 13, color: 'var(--gris-mid)', background: 'var(--primary-pale)', borderRadius: 10, padding: '10px 12px' }}>
+                🗳️ Se decide por votación hasta el {mvpCierre(partidoActual.fecha)?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las 23:59. Después se guarda solo el más votado.
+              </p>
+            ) : (
+            <>
+            <p style={{ fontSize: 11, color: 'var(--gris-mid)', margin: '-2px 0 6px' }}>Se guarda automáticamente con el más votado. Cámbialo solo para corregir un error.</p>
+            <select id="mvp-sel" className="select" value={mvpSel} onChange={(e) => {
+              if (partidoActual?.mvp_jugador_id && !window.confirm('El MVP salió de la votación. ¿Seguro que quieres cambiarlo a mano?')) return
+              handleMvpChange(e)
+            }}>
               <option value="">Sin MVP</option>
               {participantes.map(j => <option key={j.id} value={j.id}>#{j.dorsal} — {j.nombre}</option>)}
             </select>
+            </>
+            )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={{ fontSize: 14, color: 'var(--gris-mid)' }}>{filas.length} jugadores</span>
