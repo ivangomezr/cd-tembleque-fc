@@ -4,6 +4,7 @@ import {
   authErrorMessage, purgeLegacyAuth, LEGACY_STORAGE_KEYS, ROLES,
 } from '../auth'
 import { playerEmail as scriptPlayerEmail } from '../../../scripts/auth-admin.mjs'
+import { messageFor } from '../dbErrors'
 
 // ── Test doubles ─────────────────────────────────────────────────────────────
 const now = () => Math.floor(Date.now() / 1000)
@@ -319,7 +320,7 @@ describe('sesiones anónimas para votar', () => {
     let msg = null
     const original = console.error
     console.error = () => {}
-    try { await svc.ensureVoterSession() } catch (e) { msg = e.message }
+    try { await svc.ensureVoterSession() } catch (e) { msg = messageFor(e) } // what the vote sheet shows
     console.error = original
     expect(msg).toMatch(/no está disponible/)
   })
