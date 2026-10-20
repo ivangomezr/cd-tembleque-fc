@@ -12,6 +12,8 @@
  *   (scripts/auth-admin.mjs).
  */
 
+import { UserFacingError } from './dbErrors'
+
 export const ROLES = Object.freeze({
   VISITANTE: 'visitante',
   JUGADOR: 'jugador',
@@ -255,7 +257,7 @@ export function createAuthService(client, { playerDomain = DEFAULT_PLAYER_DOMAIN
       const { data: anon, error } = await client.auth.signInAnonymously()
       if (error || !anon?.session) {
         console.error('[auth] anonymous sign-in failed', error)
-        throw new Error('La votación no está disponible ahora mismo. Inténtalo en unos minutos.')
+        throw new UserFacingError('La votación no está disponible ahora mismo. Inténtalo en unos minutos.')
       }
       return anon.session
     },
