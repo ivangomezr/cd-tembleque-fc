@@ -40,7 +40,13 @@
    (or `npx supabase db push`).
 2. **Authentication › Sign In / Providers**
    - Email provider: **enabled**.
-   - **Allow new users to sign up: OFF** — accounts are created only by an admin.
+   - **Allow new users to sign up: ON** — required by the fan MVP vote: Supabase treats an
+     anonymous sign-in as a sign-up and refuses it ("Signups not allowed for this instance")
+     when this is off. Staff and player accounts are still created only by an admin.
+   - **Confirm email: ON** — anyone who signs up with an email can't log in until they confirm
+     it, and even then they get no role (no row in `perfiles`), so they see the same as a
+     visitor. If the Email provider shows its own sign-up switch, turn that one off.
+   - **Allow anonymous sign-ins: ON** (see `docs/mvp.md`).
    - Minimum password length: 8 recommended (migrated shorter PINs keep working).
 3. **Authentication › Rate Limits**: keep (or lower) the sign-in limit per IP. This is what
    protects PINs against guessing — the old `validar_clave` RPC had no limit and was removed.

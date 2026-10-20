@@ -24,7 +24,7 @@ Las sesiones anónimas no dan ningún permiso extra: `applySession` las trata co
 
 ## Puesta en marcha en Supabase
 
-1. **Authentication → Sign In / Providers → «Allow anonymous sign-ins»**: actívalo. Sin esto, votar muestra «La votación no está disponible ahora mismo».
+1. **Authentication → Sign In / Providers**: activa **«Allow anonymous sign-ins»** y también **«Allow new users to sign up»** (Supabase cuenta cada votante anónimo como un registro nuevo). Deja **«Confirm email»** activado. Sin esto, votar muestra «La votación no está disponible ahora mismo».
 2. Ejecuta la migración `supabase/migrations/20261020000000_mvp_votacion_abierta.sql` (SQL Editor o `supabase db push`).
 3. *(Opcional)* **Integrations → Cron** (pg_cron). Si está activo antes de la migración, se programan dos tareas:
    - `cerrar-votaciones-mvp` (cada 10 min): guarda el MVP aunque nadie abra la app.
