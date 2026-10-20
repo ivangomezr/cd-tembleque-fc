@@ -7,6 +7,8 @@ import TeamCrest from '../components/TeamCrest'
 import { ResultCard } from '../components/MatchCard'
 import PlayerAvatar from '../components/PlayerAvatar'
 import AppLink from '../components/AppLink'
+import { useVotacionMvp, MvpVoteSheet, MvpResults, MvpWinner } from '../components/Mvp'
+import { tiempoRestante } from '../lib/mvp'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -89,6 +91,73 @@ function SeasonStats({ fila, totalEquipos }) {
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * After a match: the final score in big and a direct invitation to vote the MVP.
+ * Shown from the moment the match is marked as played until 23:59 of the next day.
+ */
+function VoteHero({ partido, crestFor, mvp }) {
+  const { votacion, setVotacion, now } = mvp
+  const { jugadores } = useStore()
+  const [abierto, setAbierto] = useState(false)
+  const [gracias, setGracias] = useState(null)
+  const { home, away, homeGoals, awayGoals } = matchSides(partido, crestFor)
+  const r = matchResult(partido)
+  const restante = tiempoRestante(votacion?.cierra, now)
+  const miVoto = votacion?.miVoto ? jugadores.find((j) => j.id === votacion.miVoto) : null
+  const fecha = fechaLarga(partido.fecha)
+  return (
+    <section className="vote-hero anim-scale" aria-labelledby="vote-hero-title">
+      {CLUB.photo && <img className="vote-hero__bg" src={CLUB.photo.webp640} alt="" aria-hidden="true" decoding="async" />}
+      <div className="vote-hero__top">
+        <h2 id="vote-hero-title" className="vote-hero__label">Resultado final · {partido.amistoso ? 'Amistoso' : `Jornada ${partido.jornada}`}</h2>
+        <span className={`vote-hero__res vote-hero__res--${r}`}>{{ victoria: 'Victoria', empate: 'Empate', derrota: 'Derrota' }[r]}</span>
+      </div>
+      <div className="vote-hero__score" aria-label={`${home.name} ${homeGoals}, ${away.name} ${awayGoals}`}>
+        {[home, away].map((side, i) => (
+          <div key={i} className={`vote-hero__team${side.ours ? ' ours' : ''}`} style={{ order: i === 0 ? 0 : 2 }} aria-hidden="true">
+            <TeamCrest src={side.crest} name={side.name} size={60} />
+            <span>{side.name}</span>
+          </div>
+        ))}
+        <div className="vote-hero__goals" style={{ order: 1 }} aria-hidden="true">{homeGoals}-{awayGoals}</div>
+      </div>
+      {fecha && <p className="vote-hero__meta">{fecha}{partido.campo ? ` · ${partido.campo}` : ''}</p>}
+
+      {gracias || miVoto ? (
+        <p className="vote-hero__thanks" role="status">✓ {gracias ? '¡Gracias! ' : ''}Has votado a <b>{(gracias || miVoto).nombre}</b>
+          <button type="button" onClick={() => setAbierto(true)}>Cambiar</button></p>
+      ) : (
+        <button type="button" className="vote-hero__cta" onClick={() => setAbierto(true)}>⭐ Vota al MVP del partido</button>
+      )}
+      <div className="vote-hero__sub">
+        <span>⏱ {restante ? `Quedan ${restante}` : 'Cerrando…'}</span>
+        <span>👥 {votacion?.total ?? 0} {votacion?.total === 1 ? 'voto' : 'votos'}</span>
+      </div>
+      {(gracias || miVoto) && votacion?.total > 0 && <MvpResults votacion={votacion} max={3} titulo="Así va la votación" />}
+
+      {abierto && (
+        <MvpVoteSheet partido={partido} votacion={votacion}
+          onClose={() => setAbierto(false)}
+          onVoted={(v, jugador) => { setVotacion(v); setGracias(jugador); setAbierto(false) }} />
+      )}
+    </section>
+  )
+}
+
+/** The MVP of the last match, once voting has closed (until the next match is played). */
+function LastMvp({ partido, mvp }) {
+  if (!partido?.mvp_jugador_id && !mvp.votacion?.mvpJugadorId) return null
+  return (
+    <section className="card anim-fade-up" aria-labelledby="home-mvp">
+      <div className="section-head">
+        <h2 id="home-mvp">MVP del último partido</h2>
+        <AppLink className="link-more" to={`/partido/${partido.id}`}>Ver partido →</AppLink>
+      </div>
+      <MvpWinner partido={partido} votacion={mvp.votacion} />
+    </section>
   )
 }
 
@@ -271,22 +340,28 @@ export default function Inicio() {
     const forma = jugados.filter((p) => !p.amistoso).slice(-5)
     const ultimos = [...jugados].reverse().slice(0, 3)
     const proximo = partidos.filter((p) => !p.jugado).sort(byDate)[0] || null
-    return { totales, forma, ultimos, proximo }
+    const ultimoJugado = jugados[jugados.length - 1] || null
+    return { totales, forma, ultimos, proximo, ultimoJugado }
   }, [jugadores, partidos, stats])
+
+  // MVP vote of the last match played (open until 23:59 of the next day)
+  const mvp = useVotacionMvp(data.ultimoJugado)
 
   if (loading) {
     return <div className="page"><div className="empty" style={{ marginTop: '3rem' }} role="status">Cargando datos...</div></div>
   }
 
-  const { totales, forma, ultimos, proximo } = data
+  const { totales, forma, ultimos, proximo, ultimoJugado } = data
 
   return (
     <div className="page home">
+      {ultimoJugado && mvp.abierta && <VoteHero partido={ultimoJugado} crestFor={store.crestFor} mvp={mvp} />}
       <Hero temporada={temporada}>
         <SeasonStats fila={ownRow} totalEquipos={table.length || equipos.length} />
       </Hero>
       <div className="home-grid">
         <div className="home-col">
+          {ultimoJugado && !mvp.abierta && <LastMvp partido={ultimoJugado} mvp={mvp} />}
           <NextMatch partido={proximo} ahora={ahora} crestFor={store.crestFor} />
           <RecentResults partidos={ultimos} />
         </div>

@@ -119,6 +119,11 @@ export function createAuthService(client, { playerDomain = DEFAULT_PLAYER_DOMAIN
       set({ ...EMPTY, status: 'ready', expired })
       return
     }
+    // Anonymous sessions only exist to cast MVP votes: for the app they are visitors.
+    if (session.user?.is_anonymous) {
+      set({ ...EMPTY, status: 'ready', expired: false })
+      return
+    }
     let profile = null
     try {
       profile = await loadProfile(session.user.id)
@@ -240,6 +245,21 @@ export function createAuthService(client, { playerDomain = DEFAULT_PLAYER_DOMAIN
 
     dismissExpired() { set({ expired: false }) },
 
+    /**
+     * A session to vote with: the current one (player, admin or a previous
+     * anonymous one), or a new anonymous session. Nothing is asked to the voter.
+     */
+    async ensureVoterSession() {
+      const { data } = await client.auth.getSession()
+      if (data?.session && !isSessionExpired(data.session, Date.now(), 0)) return data.session
+      const { data: anon, error } = await client.auth.signInAnonymously()
+      if (error || !anon?.session) {
+        console.error('[auth] anonymous sign-in failed', error)
+        throw new Error('La votación no está disponible ahora mismo. Inténtalo en unos minutos.')
+      }
+      return anon.session
+    },
+
     destroy() { unsubscribe?.(); unsubscribe = null; listeners = [] },
 
     // exposed for tests
@@ -260,6 +280,7 @@ export function createDevAuthService() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       signOut: async () => ({}),
       refreshSession: async () => ({ data: { session: null }, error: { message: 'dev' } }),
+      signInAnonymously: async () => ({ data: { session: { user: { id: `dev-anon-${Date.now()}`, is_anonymous: true }, access_token: 'dev-anon', expires_at: Math.floor(Date.now() / 1000) + 3600 } }, error: null }),
       signInWithPassword: async ({ email, password }) => {
         const m = /^jugador-(\d+)@/.exec(email)
         const ok = (email === 'admin@local' && password === 'admin') || (m && password === '123456')

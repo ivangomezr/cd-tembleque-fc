@@ -14,6 +14,8 @@ import KitPicker from '../components/KitPicker'
 import { KITS, DEFAULT_KIT } from '../config/club'
 import { messageFor } from '../lib/dbErrors'
 import PlayerAvatar from '../components/PlayerAvatar'
+import { useVotacionMvp, MvpVoteSheet, MvpResults, MvpWinner } from '../components/Mvp'
+import { tiempoRestante } from '../lib/mvp'
 
 const fmt = (str) => new Date(str).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const posOrder = { Portero: 0, Defensa: 1, Centrocampista: 2, Delantero: 3 }
@@ -30,14 +32,13 @@ export default function DetallePartido() {
   const { partidos, jugadores, stats, store, loading } = useStore()
   const auth = useAuth()
   const isAdmin = auth.isAdmin
-  const jugadorActivo = auth.jugadorId ? jugadores.find((j) => j.id === auth.jugadorId) || null : null
 
   const partido = partidos.find((p) => p.id === Number(id))
   const [alineacion, setAlineacion] = useState(null)
   const [alineacionCargada, setAlineacionCargada] = useState(false)
   const [eventos, setEventos] = useState([])
-  const [votos, setVotos] = useState({ ranking: [], visibles: [] })
-  const [miVoto, setMiVoto] = useState(null)
+  const mvp = useVotacionMvp(partido)
+  const [votando, setVotando] = useState(false)
   const [editEvento, setEditEvento] = useState(null) // null | {} (new) | event
   const [editConvocatoria, setEditConvocatoria] = useState(false)
 
@@ -47,13 +48,8 @@ export default function DetallePartido() {
     if (!partido) return
     store.getAlineacion(partido.id).then((a) => { setAlineacion(a); setAlineacionCargada(true) })
     cargarEventos()
-    store.getVotosMvp(partido.id).then(setVotos)
   }, [partido?.id])
 
-  // My vote depends on who is logged in (can change without leaving the page)
-  useEffect(() => {
-    setMiVoto(auth.jugadorId ? votos.visibles.find((x) => x.votante_id === auth.jugadorId)?.votado_id || null : null)
-  }, [votos, auth.jugadorId])
 
   if (!partido) {
     return <div className="page anim-fade"><div className="empty">{loading ? 'Cargando…' : 'Partido no encontrado'}</div></div>
@@ -68,7 +64,6 @@ export default function DetallePartido() {
   const titularesIds = startersFromLineup(alineacion)
   const suplentes = convocados.filter((j) => !titularesIds.includes(j.id))
   const statsPartido = stats.filter((s) => s.partido_id === partido.id)
-  const statOf = (jid) => statsPartido.find((s) => s.jugador_id === jid)
 
   // Event badges (goals, penalties, own goals, cards) for shirts and substitutes.
   // From the timeline when there is one; otherwise from the manual stats.
@@ -80,33 +75,7 @@ export default function DetallePartido() {
     if (hasBadges(info)) badges[id] = <PlayerBadges info={info} size={10} />
   })
 
-  // MVP ranking
-  const ranking = [...votos.ranking].sort((a, b) => b.votos - a.votos)
-    .map((r) => ({ jugador: getJugador(Number(r.votado_id)), votos: r.votos })).filter((x) => x.jugador)
-  const mvpId = partido.mvp_jugador_id || ranking[0]?.jugador.id || null
-  const votables = jugadores.filter((j) => convocadosIds.includes(j.id) || statsPartido.some((s) => s.jugador_id === j.id && s.minutos > 0)).sort(byPos)
-
-  const votar = async (jid) => {
-    if (!jugadorActivo) return
-    haptics.tap?.()
-    try {
-      await store.votarMvp(partido.id, jugadorActivo.id, jid)
-      setMiVoto(jid)
-    } catch (e) {
-      haptics.error?.()
-      window.alert(messageFor(e))
-    }
-    setVotos(await store.getVotosMvp(partido.id))
-  }
-  const quitarVoto = async () => {
-    try {
-      await store.eliminarVotoMvp(partido.id, jugadorActivo.id)
-      setMiVoto(null)
-    } catch (e) {
-      window.alert(messageFor(e))
-    }
-    setVotos(await store.getVotosMvp(partido.id))
-  }
+  const mvpId = partido.mvp_jugador_id || null
 
   const guardarAlineacion = async (formacion, slots) => {
     await store.saveAlineacion(partido.id, formacion, slots)
@@ -261,54 +230,35 @@ export default function DetallePartido() {
         </div>
       )}
 
-      {/* MVP */}
+      {/* MVP: voted by everyone until 23:59 of the day after the match */}
       {partido.jugado && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: 18, color: 'var(--primary)', marginBottom: 14 }}>⭐ MVP del partido</h2>
-          {ranking.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              {ranking.map(({ jugador: j, votos: n }, i) => (
-                <div key={j.id} className={i === 0 ? 'hero-navy' : ''} style={{ border: i === 0 ? 'none' : '1px solid #e8eff8', borderRadius: 12, padding: i === 0 ? '12px 16px' : '8px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <Avatar jugador={j} size={i === 0 ? 46 : 34} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: i === 0 ? 'var(--on-navy)' : 'var(--gris-mid)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{i === 0 ? 'MVP — ' : ''}{n} voto{n !== 1 ? 's' : ''}</div>
-                    <div style={{ fontFamily: 'Bebas Neue', fontSize: i === 0 ? 22 : 18, color: i === 0 ? 'white' : 'var(--navy)', lineHeight: 1.1 }}>{j.nombre}</div>
-                  </div>
-                  {i === 0 && <div style={{ fontSize: 26 }}>⭐</div>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ color: 'var(--gris-mid)', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>Sin votos aún — sé el primero</div>
-          )}
-
-          {jugadorActivo && !miVoto && votables.length > 0 && (
+        <section className="card" style={{ marginBottom: '1rem' }} aria-labelledby="mvp-title">
+          <div className="section-head">
+            <h2 id="mvp-title">⭐ MVP del partido</h2>
+            {mvp.abierta && mvp.votacion?.cierra && <span className="mvp-chip">⏱ {tiempoRestante(mvp.votacion.cierra, mvp.now) || 'Cerrando…'}</span>}
+          </div>
+          {mvp.abierta ? (
             <>
-              <div style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 10 }}>Vota al mejor del partido:</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {votables.filter((j) => j.id !== jugadorActivo.id).map((j) => {
-                  const s = statOf(j.id) || {}
-                  return (
-                    <button key={j.id} onClick={() => votar(j.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'white', border: '1.5px solid #b9cbe2', borderRadius: 10, textAlign: 'left' }}>
-                      <Avatar jugador={j} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.nombre}</div>
-                        <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>{s.minutos || 0}' · ⚽{s.goles || 0} 🅰️{s.asistencias || 0}</div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+              <MvpResults votacion={mvp.votacion} titulo="Votación en directo" />
+              <button type="button" className="btn btn-primary btn-block" style={{ marginTop: 12 }} onClick={() => setVotando(true)}>
+                {mvp.votacion?.miVoto ? `✓ Has votado a ${getJugador(mvp.votacion.miVoto)?.nombre || ''} · Cambiar` : '⭐ Votar al MVP'}
+              </button>
+              <p className="mvp-note">Puede votar todo el mundo, sin registro. Cierra a las 23:59 del día siguiente al partido.</p>
             </>
+          ) : mvpId ? (
+            <>
+              <MvpWinner partido={partido} votacion={mvp.votacion} />
+              {mvp.votacion?.total > 0 && <div style={{ marginTop: 12 }}><MvpResults votacion={mvp.votacion} titulo="Resultado final" /></div>}
+            </>
+          ) : (
+            <p style={{ color: 'var(--gris-mid)', fontSize: 13, textAlign: 'center' }}>La votación ha cerrado sin votos.</p>
           )}
-          {jugadorActivo && miVoto && (
-            <div style={{ background: 'var(--primary-pale)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>✓ Has votado a <strong>{getJugador(miVoto)?.nombre}</strong></span>
-              <button onClick={quitarVoto} style={{ background: 'white', border: '1.5px solid var(--primary)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>Cambiar</button>
-            </div>
+          {votando && (
+            <MvpVoteSheet partido={partido} votacion={mvp.votacion}
+              onClose={() => setVotando(false)}
+              onVoted={(v) => { mvp.setVotacion(v); setVotando(false) }} />
           )}
-          {!jugadorActivo && <div style={{ fontSize: 13, color: 'var(--gris-mid)', textAlign: 'center' }}>Identifícate como jugador para votar al MVP</div>}
-        </div>
+        </section>
       )}
 
       {editEvento && (
