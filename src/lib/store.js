@@ -10,6 +10,7 @@ import { CLUB, COMPETITION, STORAGE_PREFIX, DEFAULT_KIT } from '../config/club'
 import { computePlayerMinutes, statsFromEvents, startersFromLineup } from './timeline'
 import { computeStandings, ownMatchesAsResults } from './standings'
 import { dbError } from './dbErrors'
+import { mvpCierre, votacionAbierta, candidatosMvp, ganadorMvp } from './mvp'
 import {
   ValidationError, validarJugador, validarTemporada, validarEquipo, validarPartido, validarPartidoLiga,
   validarConvocados, validarMvp, validarAlineacion, validarEvento, validarBorrarEvento, validarEstadistica,
@@ -382,6 +383,9 @@ export const store = {
       core.filter((f) => f in patch).forEach((f) => { patch[f] = clean[f] })
     }
     if ('mvp_jugador_id' in patch) {
+      if (patch.mvp_jugador_id != null && votacionAbierta({ ...before, ...patch })) {
+        throw new ValidationError('El MVP se decide por votación hasta las 23:59 del día siguiente al partido.')
+      }
       patch.mvp_jugador_id = validarMvp(patch.mvp_jugador_id, { partido: { ...before, ...patch }, stats: _stats, jugadores: _jugadores })
     }
     if ('equipacion' in patch && !['local', 'visitante'].includes(patch.equipacion)) throw new ValidationError('Elige una equipación válida.')
@@ -672,35 +676,42 @@ export const store = {
     notify()
   },
 
-  // ── MVP votes ──────────────────────────────────────────────────────────────
+  // ── MVP (voted by everyone) ────────────────────────────────────────────────
   /**
-   * MVP votes are a secret ballot: everyone gets the totals, a player only sees
-   * his own vote (admins see all, enforced by RLS).
-   * @returns {{ ranking: {votado_id:number, votos:number}[], visibles: object[] }}
+   * State of the MVP vote of a match.
+   * @returns {{ abierta: boolean, cierra: Date|null, total: number, ranking: {jugador_id:number, votos:number}[], miVoto: number|null, mvpJugadorId: number|null }}
    */
-  async getVotosMvp(partido_id) {
+  async getVotacionMvp(partido_id) {
+    const partido = _partidos.find((p) => p.id === partido_id)
     if (USE_SUPABASE) {
-      const [{ data: ranking, error }, visibles] = await Promise.all([
-        supabase.rpc('mvp_ranking', { p_partido_id: partido_id }),
-        supabase.auth.getSession().then(({ data }) => (data?.session ? db.select('votos_mvp', { partido_id }) : [])),
-      ])
-      if (error) console.error('[db] mvp_ranking', error)
-      return { ranking: ranking || [], visibles }
+      const { data, error } = await supabase.rpc('mvp_votacion', { p_partido_id: partido_id })
+      if (error) throw dbError('rpc', 'mvp_votacion', error)
+      const v = normalizeVotacion(data)
+      // The server saves the winner when voting closes: keep the cache in sync
+      if (partido && v.mvpJugadorId && partido.mvp_jugador_id !== v.mvpJugadorId) {
+        _partidos = _partidos.map((p) => (p.id === partido_id ? { ...p, mvp_jugador_id: v.mvpJugadorId } : p))
+        notify()
+      }
+      return v
     }
-    const rows = await db.select('votos_mvp', { partido_id })
-    const conteo = {}
-    rows.forEach((v) => { conteo[v.votado_id] = (conteo[v.votado_id] || 0) + 1 })
-    return { ranking: Object.entries(conteo).map(([votado_id, votos]) => ({ votado_id: Number(votado_id), votos })), visibles: rows }
+    return localVotacion(partido)
   },
-  async votarMvp(partido_id, votante_id, votado_id) {
-    validarVoto({
-      partido: _partidos.find((p) => p.id === partido_id), votante: _jugadores.find((j) => j.id === votante_id),
-      votadoId: votado_id, stats: _stats, jugadores: _jugadores,
-    })
-    await db.upsert('votos_mvp', [{ partido_id, votante_id, votado_id, temporada_id: tid() }], ['partido_id', 'votante_id'])
-  },
-  async eliminarVotoMvp(partido_id, votante_id) {
-    await db.remove('votos_mvp', { partido_id, votante_id })
+
+  /** Casts (or changes) this person's vote. Anyone can vote: no account needed. */
+  async votarMvp(partido_id, jugador_id) {
+    const partido = _partidos.find((p) => p.id === partido_id)
+    const candidatos = candidatosMvp(partido, _jugadores, _stats)
+    if (!votacionAbierta(partido)) throw new ValidationError('La votación de este partido no está abierta.')
+    if (!candidatos.some((c) => c.id === jugador_id)) throw new ValidationError('Solo se puede votar a jugadores convocados para este partido.')
+    if (USE_SUPABASE) {
+      await voterSessionProvider()
+      const { data, error } = await supabase.rpc('votar_mvp', { p_partido_id: partido_id, p_jugador_id: jugador_id })
+      if (error) throw dbError('rpc', 'votar_mvp', error)
+      return normalizeVotacion(data)
+    }
+    const all = load('mvp_votos', []).filter((v) => !(v.partido_id === partido_id && v.user_id === LOCAL_VOTER))
+    save('mvp_votos', [...all, { partido_id, user_id: LOCAL_VOTER, votado_id: jugador_id }])
+    return localVotacion(partido)
   },
 
   // ── Sponsors ───────────────────────────────────────────────────────────────
@@ -786,4 +797,43 @@ function mergeStats(saved) {
     else _stats.push(row)
   }
   _stats = [..._stats]
+}
+
+// ── MVP helpers ─────────────────────────────────────────────────────────────
+// Session used to vote (set by the app: anonymous Supabase session if needed)
+let voterSessionProvider = async () => null
+export function setVoterSessionProvider(fn) { voterSessionProvider = fn }
+
+const LOCAL_VOTER = 'este-dispositivo'
+
+function normalizeVotacion(d) {
+  return {
+    abierta: !!d?.abierta,
+    cierra: d?.cierra ? new Date(d.cierra) : null,
+    total: Number(d?.total) || 0,
+    ranking: (d?.ranking || []).map((r) => ({ jugador_id: Number(r.jugador_id), votos: Number(r.votos) })),
+    miVoto: d?.mi_voto != null ? Number(d.mi_voto) : null,
+    mvpJugadorId: d?.mvp_jugador_id != null ? Number(d.mvp_jugador_id) : null,
+  }
+}
+
+/** Local demo mode: same rules, votes kept in this browser. */
+function localVotacion(partido) {
+  if (!partido) return normalizeVotacion(null)
+  const votos = load('mvp_votos', []).filter((v) => v.partido_id === partido.id)
+  const conteo = {}
+  votos.forEach((v) => { conteo[v.votado_id] = (conteo[v.votado_id] || 0) + 1 })
+  const ranking = Object.entries(conteo).map(([id, n]) => ({ jugador_id: Number(id), votos: n })).sort((a, b) => b.votos - a.votos)
+  const abierta = votacionAbierta(partido)
+  let mvp = partido.mvp_jugador_id ?? null
+  if (!abierta && partido.jugado && mvp == null && ranking.length) {
+    mvp = ganadorMvp(ranking, candidatosMvp(partido, _jugadores, _stats))
+    save('partidos', load('partidos', []).map((p) => (p.id === partido.id ? { ...p, mvp_jugador_id: mvp } : p)))
+    _partidos = _partidos.map((p) => (p.id === partido.id ? { ...p, mvp_jugador_id: mvp } : p))
+    notify()
+  }
+  return {
+    abierta, cierra: mvpCierre(partido.fecha), total: votos.length, ranking,
+    miVoto: votos.find((v) => v.user_id === LOCAL_VOTER)?.votado_id ?? null, mvpJugadorId: mvp,
+  }
 }

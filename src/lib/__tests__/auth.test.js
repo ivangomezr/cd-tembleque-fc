@@ -25,7 +25,7 @@ function memoryStorage(initial = {}) {
  * Minimal fake of the parts of supabase-js the service uses.
  * accounts: { email: { password, userId } }   profiles: { userId: { rol, jugador_id } }
  */
-function fakeClient({ accounts = {}, profiles = {}, initialSession = null, refreshOk = true } = {}) {
+function fakeClient({ accounts = {}, profiles = {}, initialSession = null, refreshOk = true, anonDisabled = false } = {}) {
   let listener = null
   const calls = { signOut: [], signIn: [] }
   let current = initialSession
@@ -43,6 +43,12 @@ function fakeClient({ accounts = {}, profiles = {}, initialSession = null, refre
         return { data: { session: current }, error: null }
       },
       signOut: async (opts) => { calls.signOut.push(opts); current = null; return { error: null } },
+      signInAnonymously: async () => {
+        calls.anon = (calls.anon || 0) + 1
+        if (anonDisabled) return { data: { session: null }, error: { message: 'Anonymous sign-ins are disabled', code: 'anonymous_provider_disabled' } }
+        current = { ...session(`anon-${calls.anon}`), user: { id: `anon-${calls.anon}`, is_anonymous: true } }
+        return { data: { session: current }, error: null }
+      },
       refreshSession: async () => {
         if (!refreshOk || !current) return { data: { session: null }, error: { message: 'Invalid Refresh Token' } }
         current = session(current.user.id)
@@ -277,5 +283,44 @@ describe('sign-out', () => {
     c.emit('SIGNED_OUT', null)
     await tick()
     expect(svc.getState().expired).toBe(false)
+  })
+})
+
+// ── Anonymous voters (MVP) ───────────────────────────────────────────────────
+describe('sesiones anónimas para votar', () => {
+  it('una sesión anónima es un visitante: sin rol, sin datos de jugador y sin aviso de sesión caducada', async () => {
+    const anon = { ...session('anon-x'), user: { id: 'anon-x', is_anonymous: true } }
+    const svc = createAuthService(fakeClient({ initialSession: anon, profiles: { 'anon-x': { rol: 'admin' } } }), { storage: memoryStorage() })
+    await svc.init()
+    expect(svc.getState()).toMatchObject({ status: 'ready', role: ROLES.VISITANTE, session: null, jugadorId: null, expired: false })
+  })
+  it('crea una sesión anónima solo si no hay ninguna', async () => {
+    const client = fakeClient()
+    const svc = createAuthService(client, { storage: memoryStorage() })
+    await svc.init()
+    const s1 = await svc.ensureVoterSession()
+    const s2 = await svc.ensureVoterSession()
+    expect(s1.user.is_anonymous).toBe(true)
+    expect(s2.user.id).toBe(s1.user.id)
+    expect(client.calls.anon).toBe(1)
+  })
+  it('un jugador identificado vota con su propia sesión', async () => {
+    const client = fakeClient({ accounts: { [`jugador-7@${DOMAIN}`]: { password: '123456', userId: 'u7' } }, profiles: { u7: { rol: 'jugador', jugador_id: 7 } } })
+    const svc = createAuthService(client, { playerDomain: DOMAIN, storage: memoryStorage() })
+    await svc.init()
+    await svc.signInPlayer(7, '123456')
+    const s = await svc.ensureVoterSession()
+    expect(s.user.id).toBe('u7')
+    expect(client.calls.anon).toBe(undefined)
+  })
+  it('si las sesiones anónimas están desactivadas, da un mensaje claro', async () => {
+    const svc = createAuthService(fakeClient({ anonDisabled: true }), { storage: memoryStorage() })
+    await svc.init()
+    let msg = null
+    const original = console.error
+    console.error = () => {}
+    try { await svc.ensureVoterSession() } catch (e) { msg = e.message }
+    console.error = original
+    expect(msg).toMatch(/no está disponible/)
   })
 })

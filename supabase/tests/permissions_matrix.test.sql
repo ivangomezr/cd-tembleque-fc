@@ -300,8 +300,8 @@ select is((select count(*)::int from information_schema.table_privileges
             where table_schema = 'public' and grantee in ('anon', 'authenticated') and privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER')), 0,
   'grants: nadie de la API puede TRUNCATE/REFERENCES/TRIGGER');
 select is((select array_agg(p.proname::text order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-            where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')), array['mvp_ranking'],
-  'rpc: anon solo puede ejecutar mvp_ranking');
+            where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')), array['mvp_ranking', 'mvp_votacion'],
+  'rpc: anon solo puede ejecutar mvp_ranking y mvp_votacion');
 select is((select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
             where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity), 0,
   'rls: todas las tablas de public tienen RLS');

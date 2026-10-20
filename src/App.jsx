@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import ErrorToast from './components/ErrorToast'
 import SessionNotice from './components/SessionNotice'
-import { useAuth } from './hooks/useAuth'
-import { setActorProvider } from './lib/store'
+import { useAuth, authService } from './hooks/useAuth'
+import { setActorProvider, setVoterSessionProvider } from './lib/store'
 import { PullIndicator } from './components/PullIndicator'
 import { store } from './lib/store'
 import Inicio from './pages/Inicio'
@@ -110,6 +110,8 @@ export default function App() {
   const auth = useAuth()
   // Local (no-Supabase) activity log only; with Supabase the server sets the actor
   setActorProvider(() => (auth.session ? { jugador_id: auth.jugadorId, nombre: auth.profile?.nombre || auth.session.user?.email } : null))
+  // MVP votes: anyone can vote; without an account an anonymous session is created on the first vote
+  setVoterSessionProvider(() => authService?.ensureVoterSession())
   // Members-only player details (injury notes…) are fetched once the role is known
   useEffect(() => {
     if (auth.status !== 'ready') return
