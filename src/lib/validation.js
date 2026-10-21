@@ -12,6 +12,7 @@
 import { CLUB, COMPETITION } from '../config/club'
 import { startersFromLineup, statsFromEvents, timelineIssue } from './timeline'
 import { UserFacingError } from './dbErrors'
+import { votacionAbierta } from './mvp'
 
 export class ValidationError extends UserFacingError {
   constructor(message, field) {
@@ -270,6 +271,35 @@ export function validarMvp(jugadorId, { partido, stats = [], jugadores = [] } = 
   const jugo = stats.some((s) => s.partido_id === partido.id && s.jugador_id === Number(jugadorId) && s.minutos > 0)
   if (conv.length && !conv.includes(Number(jugadorId)) && !jugo) fail(`${nombreDe(jugadores)(jugadorId)} no participó en este partido.`)
   return Number(jugadorId)
+}
+
+// ── MVP candidates (migration 20261022000000_mvp_finalistas.sql) ────────────
+export const MVP_CANDIDATOS = 5
+
+/** How many candidates a match needs: 5, or the whole call-up when it's smaller. */
+export const candidatosNecesarios = (partido) => Math.min(MVP_CANDIDATOS, (partido?.convocados || []).length)
+
+/** Marking the match as played now would open a vote (so it needs the candidates). */
+export const necesitaCandidatos = (partido, now = new Date()) => votacionAbierta({ ...partido, jugado: true }, now)
+
+/** Checks the chosen candidates: exactly 5 (or the whole call-up), all called up. Empty = none chosen (null). */
+export function validarFinalistas(ids, { partido, jugadores = [] } = {}) {
+  if (ids == null || (Array.isArray(ids) && ids.length === 0)) return null
+  const clean = validarIds(ids, { jugadores, max: MVP_CANDIDATOS, que: 'candidatos al MVP' })
+  const conv = (partido?.convocados || []).map(Number)
+  const fuera = clean.find((id) => !conv.includes(id))
+  if (fuera) fail(`${nombreDe(jugadores)(fuera)} es candidato al MVP y tiene que estar convocado.`)
+  const n = candidatosNecesarios(partido)
+  if (clean.length !== n) fail(`Elige ${n} candidatos al MVP (has elegido ${clean.length}).`)
+  return clean
+}
+
+/** A match about to be marked as played (while its vote would be open) needs its candidates. */
+export function exigirFinalistas(partido, now = new Date()) {
+  if (!partido?.jugado || !necesitaCandidatos(partido, now)) return
+  const n = candidatosNecesarios(partido)
+  if (!n) fail('Antes de marcar el partido como jugado, haz la convocatoria y elige los candidatos al MVP.', 'mvp_finalistas')
+  if ((partido.mvp_finalistas || []).length !== n) fail(`Elige los ${n} candidatos al MVP antes de marcar el partido como jugado.`, 'mvp_finalistas')
 }
 
 // ── Lineups ─────────────────────────────────────────────────────────────────

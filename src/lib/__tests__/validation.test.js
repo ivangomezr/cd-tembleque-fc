@@ -5,6 +5,7 @@ import {
   validarJugador, validarPartido, validarPartidoLiga, validarEvento, validarBorrarEvento, validarAlineacion,
   validarEstadistica, validarConvocados, validarVoto, validarTemporada, validarEquipo, debeMarcarseJugado,
   limitesMinuto, urlOk, FORMACIONES_VALIDAS, ESTADOS_JUGADOR, POSICIONES,
+  validarFinalistas, exigirFinalistas, candidatosNecesarios, necesitaCandidatos,
 } from '../validation'
 import { timelineIssue } from '../timeline'
 import { ESTADOS, POSICIONES as POSICIONES_UI } from '../players'
@@ -348,5 +349,46 @@ describe('las listas coinciden con la base de datos y la interfaz', () => {
     expect(Object.keys(ESTADOS)).toEqual(ESTADOS_JUGADOR)
     expect(POSICIONES_UI).toEqual(POSICIONES)
     expect(POSICIONES).toEqual(['Portero', 'Defensa', 'Centrocampista', 'Delantero'])
+  })
+})
+
+describe('candidatos al MVP', () => {
+  const now = new Date('2026-10-20T20:00:00Z')
+  const jugadores = [1, 2, 3, 4, 5, 6, 7].map((id) => ({ id, nombre: `Jugador ${id}` }))
+  const partido = { id: 1, fecha: '2026-10-20', convocados: [1, 2, 3, 4, 5, 6] }
+  const elegir = (ids, p = partido) => validarFinalistas(ids, { partido: p, jugadores })
+
+  it('5 de los convocados', () => {
+    expect(elegir([1, 2, 3, 4, 5])).toEqual([1, 2, 3, 4, 5])
+    expect(candidatosNecesarios(partido)).toBe(5)
+  })
+  it('ni más ni menos de 5', () => {
+    expect(() => elegir([1, 2, 3, 4])).toThrow('Elige 5 candidatos al MVP (has elegido 4).')
+    expect(() => elegir([1, 2, 3, 4, 5, 6])).toThrow('como máximo 5')
+  })
+  it('con menos de 5 convocados, todos', () => {
+    const p = { ...partido, convocados: [1, 2, 3] }
+    expect(candidatosNecesarios(p)).toBe(3)
+    expect(elegir([1, 2, 3], p)).toEqual([1, 2, 3])
+    expect(() => elegir([1, 2], p)).toThrow('Elige 3 candidatos')
+  })
+  it('solo convocados, sin repetidos ni identificadores raros', () => {
+    expect(() => elegir([1, 2, 3, 4, 7])).toThrow('Jugador 7 es candidato al MVP y tiene que estar convocado.')
+    expect(() => elegir([1, 1, 2, 3, 4])).toThrow('repetidos')
+    expect(() => elegir([1, 2, 3, 4, 'x'])).toThrow('no válidos')
+    expect(() => elegir('1,2,3')).toThrow('no es válida')
+  })
+  it('vacío = sin elegir', () => {
+    expect(elegir([])).toBeNull()
+    expect(elegir(null)).toBeNull()
+  })
+  it('marcar como jugado exige los candidatos mientras la votación estaría abierta', () => {
+    expect(() => exigirFinalistas({ ...partido, jugado: true }, now)).toThrow('Elige los 5 candidatos al MVP antes de marcar el partido como jugado.')
+    expect(() => exigirFinalistas({ ...partido, jugado: true, convocados: [] }, now)).toThrow('haz la convocatoria')
+    expect(() => exigirFinalistas({ ...partido, jugado: true, mvp_finalistas: [1, 2, 3, 4, 5] }, now)).not.toThrow()
+  })
+  it('un partido antiguo (votación ya cerrada) no los necesita', () => {
+    expect(necesitaCandidatos({ ...partido, fecha: '2026-10-10' }, now)).toBe(false)
+    expect(() => exigirFinalistas({ ...partido, fecha: '2026-10-10', jugado: true }, now)).not.toThrow()
   })
 })

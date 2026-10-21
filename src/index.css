@@ -1077,6 +1077,9 @@ input[type="time"] {
 .player-log__rol { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--primary-pale); color: var(--primary); }
 .player-log__rol--titular { background: var(--navy); color: white; }
 .player-log__rol--sin-minutos, .player-log__rol--convocado { background: #eef0f3; color: var(--home-muted); }
+.player-log__rol--no-convocado { background: transparent; color: var(--home-muted); border: 1px dashed #b7c2d3; padding: 1px 7px; }
+.player-log__row--out .player-log__res { opacity: 0.45; }
+.player-log__row--out .player-log__rival { color: var(--home-muted); font-weight: 600; }
 .player-log__icons { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; }
 .card-y, .card-r { display: inline-block; width: 9px; height: 12px; border-radius: 2px; }
 .card-y { background: #f0c040; }
@@ -1274,3 +1277,16 @@ input[type="time"] {
 }
 @media (min-width: 960px) { .vote-hero { padding: 22px 26px 24px; } .vote-hero__goals { font-size: 84px; } }
 @media (prefers-reduced-motion: reduce) { .vote-hero__cta { animation: none; } .mvp-results__track i { transition: none; } }
+
+/* MVP candidates picker (admin › match) */
+.mvp-candidatos { border: 1.5px solid #e1e8f2; border-radius: 14px; padding: 12px; margin: 0 0 16px; min-width: 0; }
+.mvp-candidatos__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 0; float: left; }
+.mvp-candidatos__head + * { clear: both; }
+.mvp-candidatos__count { font-weight: 800; font-size: 13px; padding: 2px 10px; border-radius: 20px; background: #eef0f3; color: var(--home-muted); }
+.mvp-candidatos__count.ok { background: var(--accent-light); color: var(--navy); }
+.mvp-candidatos__help { font-size: 12px; color: var(--home-muted); margin: 6px 0 10px; }
+.mvp-candidatos__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 520px) { .mvp-candidatos__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mvp-pick--sm { padding: 8px 2px 6px; border-radius: 12px; }
+.mvp-pick--sm .mvp-pick__name { font-size: 11px; }
+.mvp-pick--off { opacity: 0.45; cursor: not-allowed; }

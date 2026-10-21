@@ -14,7 +14,7 @@ import { mvpCierre, votacionAbierta, candidatosMvp, ganadorMvp } from './mvp'
 import {
   ValidationError, validarJugador, validarTemporada, validarEquipo, validarPartido, validarPartidoLiga,
   validarConvocados, validarMvp, validarAlineacion, validarEvento, validarBorrarEvento, validarEstadistica,
-  validarVoto, textoOk, urlOk,
+  validarVoto, textoOk, urlOk, validarFinalistas, exigirFinalistas,
 } from './validation'
 
 const USE_SUPABASE = SUPABASE_READY
@@ -344,6 +344,7 @@ export const store = {
 
   // ── Our matches ────────────────────────────────────────────────────────────
   async addPartido(p) {
+    exigirFinalistas({ ...p, convocados: [] }) // a new match has no call-up yet
     p = validarPartido(p, { partidos: _partidos, partidosLiga: _partidosLiga, equipos: _equipos, temporada: _temporadaActiva, local: !USE_SUPABASE })
     const row = await db.insert('partidos', {
       jornada: p.jornada,
@@ -369,7 +370,7 @@ export const store = {
 
   async updatePartido(id, data) {
     const fields = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'campo', 'jugado', 'goles_local',
-      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id', 'equipacion']
+      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id', 'equipacion', 'mvp_finalistas']
     const patch = Object.fromEntries(fields.filter((f) => data[f] !== undefined).map((f) => [f, data[f]]))
     if (patch.hora === '') patch.hora = null
     const before = _partidos.find((x) => x.id === id)
@@ -390,6 +391,8 @@ export const store = {
     }
     if ('equipacion' in patch && !['local', 'visitante'].includes(patch.equipacion)) throw new ValidationError('Elige una equipación válida.')
     if ('convocados' in patch) patch.convocados = await store.validarConvocatoria(id, patch.convocados)
+    if ('mvp_finalistas' in patch) patch.mvp_finalistas = validarFinalistas(patch.mvp_finalistas, { partido: { ...before, ...patch }, jugadores: _jugadores })
+    if (patch.jugado && !before.jugado) exigirFinalistas({ ...before, ...patch })
     await db.update('partidos', { id }, patch)
     _partidos = _partidos.map((p) => (p.id === id ? { ...p, ...patch } : p))
     await log('✏️ Editó', 'Partido', `J${patch.jornada ?? before?.jornada} ${patch.local ?? before?.local} - ${patch.visitante ?? before?.visitante}`)
@@ -401,7 +404,10 @@ export const store = {
   /** Checks a call-up against the lineup, timeline and stats of the match. */
   async validarConvocatoria(partido_id, convocados) {
     const [alineacion, eventos] = await Promise.all([store.getAlineacion(partido_id), store.getEventos(partido_id)])
-    return validarConvocados(convocados, { jugadores: _jugadores, alineacion, eventos, stats: _stats.filter((s) => s.partido_id === partido_id) })
+    const clean = validarConvocados(convocados, { jugadores: _jugadores, alineacion, eventos, stats: _stats.filter((s) => s.partido_id === partido_id) })
+    const candidato = (_partidos.find((p) => p.id === partido_id)?.mvp_finalistas || []).map(Number).find((id) => !clean.includes(id))
+    if (candidato) throw new ValidationError(`${_jugadores.find((j) => j.id === candidato)?.nombre || 'Ese jugador'} es candidato al MVP y tiene que estar convocado.`)
+    return clean
   },
 
   async updateConvocados(partido_id, convocados) {

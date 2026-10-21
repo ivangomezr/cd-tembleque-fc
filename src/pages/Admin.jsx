@@ -11,7 +11,8 @@ import Sheet from '../components/Sheet'
 import { SUPABASE_READY } from '../lib/supabase'
 import { haptics } from '../lib/haptics'
 import { enviarNotificacionResultado } from '../lib/push'
-import { validarJugador, validarPartido, validarTemporada, debeMarcarseJugado, LIMITS } from '../lib/validation'
+import { validarJugador, validarPartido, validarTemporada, debeMarcarseJugado, LIMITS, candidatosNecesarios, necesitaCandidatos, validarFinalistas, exigirFinalistas } from '../lib/validation'
+import MvpCandidatosPicker from '../components/MvpCandidatosPicker'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
 import PlayerAvatar from '../components/PlayerAvatar'
 import { votacionAbierta, mvpCierre } from '../lib/mvp'
@@ -189,9 +190,10 @@ function PanelJugadores({ jugadores, store }) {
 
 // ---- Panel Partidos ----
 function PanelPartidos({ partidos, store }) {
-  const { equipos, partidosLiga, temporada, stats } = useStore()
+  const { equipos, partidosLiga, temporada, stats, jugadores } = useStore()
+  const { isSuperAdmin } = useAuth()
   const [modal, setModal] = useState(null)
-  const emptyP = { jornada: '', fecha: '', hora: '', enCasa: true, rival: '', campo: CLUB.homeGround, jugado: false, goles_local: 0, goles_visitante: 0, amistoso: false, escudo_rival_url: null, equipacion: DEFAULT_KIT }
+  const emptyP = { jornada: '', fecha: '', hora: '', enCasa: true, rival: '', campo: CLUB.homeGround, jugado: false, goles_local: 0, goles_visitante: 0, amistoso: false, escudo_rival_url: null, equipacion: DEFAULT_KIT, mvp_finalistas: [] }
   const [form, setForm] = useState(emptyP)
   const [escudoFile, setEscudoFile] = useState(null)
   const [escudoPreview, setEscudoPreview] = useState(null)
@@ -207,24 +209,39 @@ function PanelPartidos({ partidos, store }) {
   }
   const rivales = equipos.filter(e => !e.es_propio)
 
+  // ── MVP candidates: needed to mark the match as played while its vote would be open
+  const antes = modal?.mode === 'edit' ? partidos.find(p => p.id === modal.id) : null
+  const partidoForm = { ...antes, fecha: form.fecha, hora: form.hora, convocados: antes?.convocados || [], mvp_finalistas: form.mvp_finalistas }
+  const necesarios = candidatosNecesarios(partidoForm)
+  const pideCandidatos = !antes?.jugado && necesitaCandidatos(partidoForm)
+  const yaElegidos = necesarios > 0 && (antes?.mvp_finalistas || []).length === necesarios
+  const bloqueoJugado = !modal || !pideCandidatos ? null
+    : modal.mode === 'add' ? 'Guarda primero el partido y haz la convocatoria. Después podrás marcarlo como jugado y elegir los candidatos al MVP.'
+    : !necesarios ? 'Haz la convocatoria (en la página del partido) antes de marcarlo como jugado: de ella salen los candidatos al MVP.'
+    : !isSuperAdmin && !yaElegidos ? 'Solo un superadmin puede marcarlo como jugado, porque es quien elige los candidatos al MVP.'
+    : null
+  // the superadmin chooses them when marking it as played, or changes them while nobody has voted
+  const editaCandidatos = isSuperAdmin && modal?.mode === 'edit' && necesarios > 0 && !!form.jugado &&
+    (pideCandidatos || (antes?.jugado && votacionAbierta(antes) && (antes.mvp_finalistas || []).length > 0))
+
   // Tick "played" automatically once the match is over (only for matches not played yet)
   useEffect(() => {
     if (!modal || auto.tocado) return
     const before = modal.mode === 'edit' ? partidos.find(p => p.id === modal.id) : null
     if (before?.jugado) return
-    const terminado = debeMarcarseJugado({ fecha: form.fecha, hora: form.hora, jugado: false }, new Date(), temporada?.duracion_partido)
+    const terminado = !bloqueoJugado && debeMarcarseJugado({ fecha: form.fecha, hora: form.hora, jugado: false }, new Date(), temporada?.duracion_partido)
     if (terminado !== auto.jugado) {
       setForm(f => ({ ...f, jugado: terminado }))
       setAuto(a => ({ ...a, jugado: terminado }))
     }
-  }, [modal, form.fecha, form.hora])
+  }, [modal, form.fecha, form.hora, bloqueoJugado])
 
   const nuestros = [...partidos].sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
 
   const openAdd = () => { setForm(emptyP); setEscudoFile(null); setEscudoPreview(null); setErrorValidacion(null); setAuto({ jugado: false, tocado: false, marcador: false }); setModal({ mode: 'add' }) }
   const openEdit = (p) => {
     setAuto({ jugado: false, tocado: false, marcador: false })
-    setForm({ jornada: p.jornada, fecha: p.fecha, hora: p.hora || '', enCasa: isHome(p), rival: rivalName(p), campo: p.campo || '', jugado: p.jugado, goles_local: p.goles_local, goles_visitante: p.goles_visitante, amistoso: !!p.amistoso, escudo_rival_url: p.escudo_rival_url || null, equipacion: p.equipacion || DEFAULT_KIT })
+    setForm({ jornada: p.jornada, fecha: p.fecha, hora: p.hora || '', enCasa: isHome(p), rival: rivalName(p), campo: p.campo || '', jugado: p.jugado, goles_local: p.goles_local, goles_visitante: p.goles_visitante, amistoso: !!p.amistoso, escudo_rival_url: p.escudo_rival_url || null, equipacion: p.equipacion || DEFAULT_KIT, mvp_finalistas: (p.mvp_finalistas || []).map(Number) })
     setEscudoFile(null)
     setEscudoPreview(p.escudo_rival_url || store.crestFor(rivalName(p)) || null)
     setErrorValidacion(null)
@@ -257,11 +274,12 @@ function PanelPartidos({ partidos, store }) {
       visitante: form.enCasa ? rival : CLUB.name,
       campo: form.campo.trim(),
       amistoso: form.amistoso,
-      jugado: fueraDeFecha ? false : !!form.jugado,
+      jugado: fueraDeFecha || bloqueoJugado ? false : !!form.jugado,
       goles_local: Number(form.goles_local) || 0,
       goles_visitante: Number(form.goles_visitante) || 0,
       escudo_rival_url: escudoUrl,
       equipacion: form.equipacion || DEFAULT_KIT,
+      ...(editaCandidatos ? { mvp_finalistas: form.mvp_finalistas } : {}),
     }
   }
 
@@ -274,7 +292,10 @@ function PanelPartidos({ partidos, store }) {
     else {
       try {
         // Same rules as the database (validation.js ↔ migration 20261017180000)
-        validarPartido(datosPartido(null), { partidos, partidosLiga, equipos, temporada, id: modal.mode === 'edit' ? modal.id : null, stats })
+        const data = datosPartido(null)
+        validarPartido(data, { partidos, partidosLiga, equipos, temporada, id: modal.mode === 'edit' ? modal.id : null, stats })
+        if (editaCandidatos) validarFinalistas(form.mvp_finalistas, { partido: partidoForm, jugadores })
+        if (data.jugado && !antes?.jugado) exigirFinalistas({ ...partidoForm, jugado: true, mvp_finalistas: editaCandidatos ? form.mvp_finalistas : antes?.mvp_finalistas })
       } catch (e) { err = messageFor(e) }
     }
     if (err) { haptics.error?.(); setErrorValidacion(err); return }
@@ -396,13 +417,18 @@ function PanelPartidos({ partidos, store }) {
             <KitPicker value={form.equipacion} onChange={v => set('equipacion', v)} />
           </div>
 
-          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: fueraDeFecha ? 0.4 : 1 }}>
-            <input type="checkbox" id="jugado" checked={!!form.jugado && !fueraDeFecha} disabled={fueraDeFecha} onChange={e => set('jugado', e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: fueraDeFecha || bloqueoJugado ? 0.4 : 1 }}>
+            <input type="checkbox" id="jugado" checked={!!form.jugado && !fueraDeFecha && !bloqueoJugado} disabled={fueraDeFecha || !!bloqueoJugado} aria-describedby={bloqueoJugado ? 'jugado-bloqueo' : undefined} onChange={e => set('jugado', e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
             <label htmlFor="jugado" className="label" style={{ margin: 0 }}>
               Partido jugado
               <span style={{ fontSize: 11, color: 'var(--gris-mid)', fontWeight: 400 }}>{fueraDeFecha ? ' (fecha futura)' : ' — suma los minutos de la alineación y los cambios'}</span>
             </label>
           </div>
+          {bloqueoJugado && !fueraDeFecha && (
+            <p id="jugado-bloqueo" style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
+              🔒 {bloqueoJugado}
+            </p>
+          )}
           {auto.jugado && form.jugado && !fueraDeFecha && (
             <p style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
               ✓ Marcado automáticamente porque el partido ya terminó. Revisa el resultado antes de guardar.
@@ -418,6 +444,19 @@ function PanelPartidos({ partidos, store }) {
                 </div>
               ))}
             </div>
+          )}
+
+          {editaCandidatos && !fueraDeFecha && (
+            <MvpCandidatosPicker partido={partidoForm} jugadores={jugadores} stats={stats} necesarios={necesarios}
+              value={form.mvp_finalistas} onChange={v => set('mvp_finalistas', v)} />
+          )}
+          {editaCandidatos && antes?.jugado && (
+            <p style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '-6px 0 12px' }}>Los candidatos solo se pueden cambiar mientras nadie haya votado.</p>
+          )}
+          {!isSuperAdmin && (antes?.mvp_finalistas || []).length > 0 && votacionAbierta({ ...antes, jugado: true }) && (
+            <p style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '0 0 12px' }}>
+              ⭐ Candidatos al MVP: {(antes.mvp_finalistas || []).map(id => jugadores.find(j => j.id === Number(id))?.nombre).filter(Boolean).join(', ')}
+            </p>
           )}
 
           {errorValidacion && <div className="alert-error">⚠️ {errorValidacion}</div>}
