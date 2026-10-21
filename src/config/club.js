@@ -6,6 +6,8 @@ export const CLUB = {
   shortName: 'Tembleque',
   initials: 'CDT',
   crest: '/escudo.png',
+  /** Width / height of public/escudo.png (383 × 512). Keeps every crest box in proportion. */
+  crestRatio: 383 / 512,
   homeGround: 'Campo Municipal de Tembleque',
   /** Team photo for the home header (public/img, generated from the original at 640 and 1200 px). */
   photo: {

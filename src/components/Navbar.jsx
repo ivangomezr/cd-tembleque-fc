@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import LoginSheet from './LoginSheet'
 import { CLUB, COMPETITION_LABEL } from '../config/club'
 import PlayerAvatar from './PlayerAvatar'
+import TeamCrest from './TeamCrest'
 
 const tabs = [
   { to: '/', label: 'Inicio', icon: '🏠' },
@@ -90,11 +91,8 @@ export default function Navbar() {
         <div style={{ maxWidth: 680, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px' }}>
 
           {/* Escudo — va a home */}
-          <img
-            src={"/escudo.png"} alt="Escudo"
-            onClick={() => navigate('/')}
-            style={{ width: 42, height: 42, objectFit: 'contain', flexShrink: 0, cursor: 'pointer' }}
-          />
+          <TeamCrest src={CLUB.crest} name={CLUB.name} alt="Escudo" size={42}
+            onClick={() => navigate('/')} imgStyle={{ cursor: 'pointer' }} />
 
           {/* Título */}
           <div style={{ flex: 1 }}>
@@ -165,7 +163,7 @@ export default function Navbar() {
             {/* Cabecera del menú */}
             <div style={{ padding: '1rem 1.25rem 1rem', borderBottom: '1px solid #0f2a5c' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: logged ? 14 : 0 }}>
-                <img src={"/escudo.png"} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                <TeamCrest src={CLUB.crest} name={CLUB.name} alt="" size={36} />
                 <div>
                   <div style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: '#ffffff', letterSpacing: '0.06em', lineHeight: 1 }}>
                     {CLUB.name}

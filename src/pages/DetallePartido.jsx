@@ -88,9 +88,7 @@ export default function DetallePartido() {
     .filter((x) => x.j)
     .sort((a, b) => Number(b.s.titular) - Number(a.s.titular) || byPos(a.j, b.j))
 
-  const Crest = ({ side, size }) => side.ours
-    ? <img src={side.crest} alt={side.name} style={{ width: size, height: size, objectFit: 'contain' }} />
-    : <TeamCrest src={side.crest} name={side.name} size={size} />
+  const Crest = ({ side, size }) => <TeamCrest src={side.crest} name={side.name} size={size} />
 
   return (
     <div className="page anim-fade">

@@ -55,7 +55,7 @@ function Hero({ temporada, children }) {
         </picture>
       )}
       <div className="home-hero__id">
-        <img className="home-hero__crest" src={CLUB.crest} alt={`Escudo del ${CLUB.name}`} width="128" height="128" />
+        <img className="home-hero__crest" src={CLUB.crest} alt={`Escudo del ${CLUB.name}`} width="383" height="512" />
         <div style={{ minWidth: 0 }}>
           <p className="home-hero__eyebrow">{COMPETITION_LABEL}</p>
           <h1 id="home-club" className="home-hero__name">{CLUB.name}</h1>
