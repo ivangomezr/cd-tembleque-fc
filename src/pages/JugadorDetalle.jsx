@@ -10,7 +10,7 @@ import PlayerEditSheet from '../components/PlayerEditSheet'
 import AppLink from '../components/AppLink'
 
 const RES = { victoria: { l: 'V', c: 'var(--res-v)' }, empate: { l: 'E', c: 'var(--res-e)' }, derrota: { l: 'D', c: 'var(--res-d)' } }
-const ROL = { titular: 'Titular', suplente: 'Suplente', 'sin minutos': 'Sin minutos', convocado: 'Convocado' }
+const ROL = { titular: 'Titular', suplente: 'Suplente', 'sin minutos': 'Sin minutos', convocado: 'Convocado', 'no convocado': 'No convocado' }
 const fecha = (f) => {
   const d = new Date(`${f}T00:00:00`)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
@@ -162,12 +162,12 @@ export default function JugadorDetalle() {
         <section className="card" aria-labelledby="player-log">
           <div className="section-head"><h2 id="player-log">Partido a partido</h2></div>
           {!log.length ? (
-            <p style={{ color: 'var(--home-muted)' }}>Todavía no ha sido convocado en ningún partido jugado.</p>
+            <p style={{ color: 'var(--home-muted)' }}>Todavía no se ha jugado ningún partido esta temporada.</p>
           ) : (
             <ol className="player-log">
               {log.map(({ partido: p, stat, rol, resultado, nuestros, rivales, rival, mvp }) => (
                 <li key={p.id}>
-                  <AppLink to={`/partido/${p.id}`} className="player-log__row"
+                  <AppLink to={`/partido/${p.id}`} className={`player-log__row${rol === 'no convocado' ? ' player-log__row--out' : ''}`}
                     aria-label={`${p.amistoso ? 'Amistoso' : `Jornada ${p.jornada}`} contra ${rival}, ${nuestros}-${rivales}. ${ROL[rol]}${stat?.minutos ? `, ${stat.minutos} minutos` : ''}${stat?.goles ? `, ${stat.goles} goles` : ''}${stat?.asistencias ? `, ${stat.asistencias} asistencias` : ''}`}>
                     <span className="player-log__res" style={{ background: RES[resultado]?.c }} aria-hidden="true">{RES[resultado]?.l}</span>
                     <span className="player-log__match" aria-hidden="true">
@@ -178,7 +178,7 @@ export default function JugadorDetalle() {
                       <span className="player-log__meta">{p.amistoso ? 'Amistoso' : `J${p.jornada}`} · {fecha(p.fecha)} · {nuestros}-{rivales}</span>
                     </span>
                     <span className="player-log__figs" aria-hidden="true">
-                      <span className={`player-log__rol player-log__rol--${rol.replace(' ', '-')}`}>{ROL[rol]}</span>
+                      <span className={`player-log__rol player-log__rol--${rol.replace(/ /g, '-')}`}>{ROL[rol]}</span>
                       <span className="player-log__icons">
                         {stat?.minutos > 0 && <span>{stat.minutos}'</span>}
                         {stat?.goles > 0 && <span>⚽{stat.goles > 1 ? `×${stat.goles}` : ''}</span>}
