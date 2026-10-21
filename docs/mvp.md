@@ -5,7 +5,11 @@
 - Cuando un partido se marca como **jugado**, se abre la votación del MVP. Puede votar cualquiera, sin registrarse.
 - La votación **cierra a las 23:59 (hora de Madrid) del día siguiente a la fecha del partido**. Ejemplo: partido el sábado → cierra el domingo a las 23:59.
 - Mientras está abierta, la pantalla de inicio muestra el resultado en grande con el botón «Vota al MVP del partido». Al cerrar, inicio enseña la tarjeta del MVP hasta el siguiente partido.
-- Solo se puede votar a los **convocados**. Si un partido no tiene convocatoria, se usan los jugadores con minutos. Orden de la lista: primero quienes tienen goles o asistencias, después por minutos jugados y luego por dorsal.
+- **Candidatos:** solo se puede votar a **5 jugadores elegidos por un superadmin** de entre los convocados (si hay menos de 5 convocados, entran todos). Se eligen en *Admin › Partidos › editar partido* al marcar «Partido jugado». Orden en pantalla: primero quienes tienen goles o asistencias, después por minutos jugados y luego por dorsal.
+  - Sin convocatoria y sin candidatos no se puede marcar el partido como jugado (mientras su votación estaría abierta; los partidos antiguos que se metan tarde no lo necesitan).
+  - Solo un superadmin elige o cambia los candidatos, y solo mientras nadie haya votado. Si ya están elegidos, un admin sí puede marcar el partido como jugado.
+  - Un candidato no se puede quitar de la convocatoria.
+  - Partidos anteriores a este cambio (sin candidatos): se vota entre todos los convocados.
 - Cada persona tiene **un voto** y puede **cambiarlo** hasta el cierre.
 - Al cerrar, el MVP se guarda solo en `partidos.mvp_jugador_id`: gana el más votado. **Empate:** gana quien va antes en el orden anterior (goles/asistencias, minutos, dorsal).
 - Mientras la votación está abierta, nadie (ni un admin) puede poner el MVP a mano. Después del cierre, un admin puede corregirlo desde el panel de estadísticas; se le pide confirmación.
@@ -25,7 +29,7 @@ Las sesiones anónimas no dan ningún permiso extra: `applySession` las trata co
 ## Puesta en marcha en Supabase
 
 1. **Authentication → Sign In / Providers**: activa **«Allow anonymous sign-ins»** y también **«Allow new users to sign up»** (Supabase cuenta cada votante anónimo como un registro nuevo). Deja **«Confirm email»** activado. Sin esto, votar muestra «La votación no está disponible ahora mismo».
-2. Ejecuta la migración `supabase/migrations/20261020000000_mvp_votacion_abierta.sql` (SQL Editor o `supabase db push`).
+2. Ejecuta las migraciones `supabase/migrations/20261020000000_mvp_votacion_abierta.sql` y `20261022000000_mvp_finalistas.sql`, en ese orden (SQL Editor o `supabase db push`).
 3. *(Opcional)* **Integrations → Cron** (pg_cron). Si está activo antes de la migración, se programan dos tareas:
    - `cerrar-votaciones-mvp` (cada 10 min): guarda el MVP aunque nadie abra la app.
    - `limpiar-votantes-anonimos` (diaria): borra los usuarios anónimos de más de 30 días. Sus votos se mantienen.

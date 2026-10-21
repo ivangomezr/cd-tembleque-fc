@@ -31,13 +31,16 @@ export const votacionAbierta = (p, now = new Date()) => !!p?.jugado && !!mvpCier
 /**
  * Who can be voted, in the order shown to voters: players with goals or assists
  * first (more goals, then more assists), then by minutes played.
- * Without a call-up, players with minutes.
+ * Only the candidates chosen by a superadmin (partido.mvp_finalistas); for older
+ * matches without them, the call-up, or players with minutes when there's none.
  */
 export function candidatosMvp(partido, jugadores = [], stats = []) {
   if (!partido) return []
   const s = (id) => stats.find((x) => x.partido_id === partido.id && x.jugador_id === id) || {}
+  const finalistas = (partido.mvp_finalistas || []).map(Number)
   const conv = (partido.convocados || []).map(Number)
-  const ids = conv.length ? conv : stats.filter((x) => x.partido_id === partido.id && x.minutos > 0).map((x) => x.jugador_id)
+  const ids = finalistas.length ? finalistas
+    : conv.length ? conv : stats.filter((x) => x.partido_id === partido.id && x.minutos > 0).map((x) => x.jugador_id)
   return jugadores
     .filter((j) => ids.includes(j.id))
     .map((j) => ({ ...j, goles: s(j.id).goles || 0, asistencias: s(j.id).asistencias || 0, minutos: s(j.id).minutos || 0 }))

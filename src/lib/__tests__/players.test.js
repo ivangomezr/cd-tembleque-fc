@@ -26,14 +26,19 @@ describe('ficha del jugador', () => {
     { partido_id: 1, jugador_id: 8, titular: true, minutos: 90, goles: 1 },
     { partido_id: 2, jugador_id: 8, titular: false, minutos: 0 },
   ]
-  it('lista solo los partidos jugados en los que fue convocado o tiene estadísticas, del más reciente al más antiguo', () => {
+  it('lista todos los partidos jugados, del más reciente al más antiguo', () => {
     const log = playerMatchLog(8, partidos, stats)
-    expect(log.map((r) => r.partido.id)).toEqual([2, 1])
-    expect(log[1]).toMatchObject({ rol: 'titular', resultado: 'victoria', nuestros: 3, rivales: 2, rival: 'CD Mora', mvp: true })
-    expect(log[0]).toMatchObject({ rol: 'sin minutos', resultado: 'empate', nuestros: 1, rivales: 1 })
+    expect(log.map((r) => r.partido.id)).toEqual([3, 2, 1]) // the unplayed match 4 is left out
+    expect(log[0]).toMatchObject({ rol: 'no convocado', resultado: 'derrota', stat: null })
+    expect(log[2]).toMatchObject({ rol: 'titular', resultado: 'victoria', nuestros: 3, rivales: 2, rival: 'CD Mora', mvp: true })
+    expect(log[1]).toMatchObject({ rol: 'sin minutos', resultado: 'empate', nuestros: 1, rivales: 1 })
   })
   it('convocado sin fila de estadísticas', () => {
-    expect(playerMatchLog(9, partidos, stats).map((r) => r.rol)).toEqual(['convocado', 'convocado'])
+    expect(playerMatchLog(9, partidos, stats).map((r) => r.rol)).toEqual(['convocado', 'no convocado', 'convocado'])
+  })
+  it('si tiene estadísticas cuenta como convocado aunque falte en la lista', () => {
+    const log = playerMatchLog(8, [{ ...partidos[1], convocados: [] }], stats)
+    expect(log[0].rol).toBe('sin minutos')
   })
   it('posición en la plantilla con empates', () => {
     const t = [{ id: 1, goles: 5 }, { id: 2, goles: 5 }, { id: 3, goles: 2 }, { id: 4, goles: 0 }]

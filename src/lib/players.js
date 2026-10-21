@@ -29,22 +29,21 @@ export function splitName(nombre = '') {
 export const initials = (n = '?') => String(n).split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'
 
 /**
- * One row per match of the season in which the player was called up or has stats.
- * @returns {Array<{ partido, stat, rol: 'titular'|'suplente'|'sin minutos'|'convocado', resultado, nuestros, rivales, rival, mvp }>}
+ * One row per played match of the season, newest first. Matches he wasn't called up
+ * for are included too, with rol 'no convocado'.
+ * @returns {Array<{ partido, stat, rol: 'titular'|'suplente'|'sin minutos'|'convocado'|'no convocado', resultado, nuestros, rivales, rival, mvp }>}
  */
 export function playerMatchLog(jugadorId, partidos = [], stats = []) {
   return partidos
     .filter((p) => p.jugado)
     .map((p) => {
       const stat = stats.find((s) => s.partido_id === p.id && s.jugador_id === jugadorId) || null
-      const convocado = (p.convocados || []).map(Number).includes(jugadorId)
-      if (!stat && !convocado) return null
+      const convocado = !!stat || (p.convocados || []).map(Number).includes(jugadorId)
       const minutos = stat?.minutos || 0
-      const rol = stat?.titular ? 'titular' : minutos > 0 ? 'suplente' : stat ? 'sin minutos' : 'convocado'
+      const rol = !convocado ? 'no convocado' : stat?.titular ? 'titular' : minutos > 0 ? 'suplente' : stat ? 'sin minutos' : 'convocado'
       const { nuestros, rivales } = ourScore(p)
       return { partido: p, stat, rol, resultado: matchResult(p), nuestros, rivales, rival: rivalName(p), mvp: p.mvp_jugador_id === jugadorId }
     })
-    .filter(Boolean)
     .sort((a, b) => String(b.partido.fecha).localeCompare(String(a.partido.fecha)))
 }
 

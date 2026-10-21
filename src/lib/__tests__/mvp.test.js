@@ -38,6 +38,9 @@ describe('candidatos', () => {
   it('solo convocados; primero goles o asistencias, después por minutos', () => {
     expect(candidatosMvp(partido, jugadores, stats).map((j) => j.id)).toEqual([3, 2, 1, 4, 5])
   })
+  it('con candidatos elegidos, solo ellos (en el mismo orden)', () => {
+    expect(candidatosMvp({ ...partido, mvp_finalistas: [5, 1, 3] }, jugadores, stats).map((j) => j.id)).toEqual([3, 1, 5])
+  })
   it('sin convocatoria, los que jugaron minutos', () => {
     expect(candidatosMvp({ id: 1, convocados: [] }, jugadores, stats).map((j) => j.id)).toEqual([3, 2, 1, 4])
   })
