@@ -802,7 +802,12 @@ input[type="time"] {
 }
 .home-hero__id { display: flex; align-items: center; gap: 14px; }
 .home-hero__crest {
-  width: 82px; height: 82px; object-fit: contain; flex-shrink: 0;
+  /* --crest = the square it used to fill; the box itself keeps the crest's 383:512
+     proportions (a square <img> gets stretched in the drag preview) and the side
+     margins keep the same footprint, so nothing moves. */
+  --crest: 82px;
+  height: var(--crest); width: calc(var(--crest) * 383 / 512); margin-inline: calc(var(--crest) * 129 / 1024);
+  object-fit: contain; flex-shrink: 0;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
 }
 .home-hero__eyebrow {
@@ -900,12 +905,12 @@ input[type="time"] {
   .home-stats { gap: 6px; }
   .home-stat { padding: 8px 3px; }
   .home-stat dt { font-size: 8.5px; letter-spacing: 0.02em; }
-  .home-hero__crest { width: 70px; height: 70px; }
+  .home-hero__crest { --crest: 70px; }
 }
 
 @media (min-width: 720px) {
   .home-hero { padding: 1.75rem 1.75rem 1.5rem; }
-  .home-hero__crest { width: 128px; height: 128px; }
+  .home-hero__crest { --crest: 128px; }
   .home-hero__id { gap: 22px; }
   .home-stats { gap: 12px; }
   .home-stat dd { font-size: 40px; }
@@ -917,7 +922,7 @@ input[type="time"] {
 @media (min-width: 960px) {
   .page.home { max-width: 1080px; padding-left: 1.5rem; padding-right: 1.5rem; }
   .home-hero { min-height: 300px; display: flex; flex-direction: column; justify-content: space-between; }
-  .home-hero__crest { width: 150px; height: 150px; }
+  .home-hero__crest { --crest: 150px; }
   .home-stats { max-width: 620px; }
   .home-record { text-align: left; }
   .home-hero__eyebrow { font-size: 12px; letter-spacing: 0.12em; }
