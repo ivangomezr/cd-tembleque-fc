@@ -4,6 +4,7 @@ import { useStore } from '../hooks/useStore'
 import { useAuth } from '../hooks/useAuth'
 import { CLUB, COMPETITION_LABEL, COMPETITION, DEFAULT_KIT } from '../config/club'
 import KitPicker from '../components/KitPicker'
+import TeamCrest from '../components/TeamCrest'
 import { ResultCard } from '../components/MatchCard'
 import { isHome, rivalName, ourScore, kickoff } from '../lib/match'
 import PanelLiga from './admin/PanelLiga'
@@ -398,7 +399,7 @@ function PanelPartidos({ partidos, store }) {
             <label className="label">Escudo rival <span style={{ fontWeight: 400, color: 'var(--gris-mid)', fontSize: 11 }}>(opcional — por defecto el de la liga)</span></label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {escudoPreview
-                ? <img src={escudoPreview} alt="Escudo rival" style={{ width: 52, height: 52, objectFit: 'contain' }} />
+                ? <TeamCrest src={escudoPreview} name="Escudo rival" size={52} />
                 : <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--primary-pale)', border: '2px dashed #b9cbe2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🛡️</div>}
               <label style={{ flex: 1, background: 'var(--primary-pale)', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                 📷 {escudoPreview ? 'Cambiar escudo' : 'Subir escudo'}

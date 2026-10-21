@@ -258,7 +258,7 @@ function Equipos() {
           <div className="form-group">
             <label className="label">Escudo</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {preview ? <img src={preview} alt="" style={{ width: 52, height: 52, objectFit: 'contain' }} /> : <TeamCrest team={{ nombre: edit.data.nombre }} size={52} />}
+              {preview ? <TeamCrest src={preview} name="" alt="" size={52} /> : <TeamCrest team={{ nombre: edit.data.nombre }} size={52} />}
               <label style={{ flex: 1, background: 'var(--primary-pale)', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                 📷 {preview ? 'Cambiar escudo' : 'Subir escudo'}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setPreview(URL.createObjectURL(f)) } }} />

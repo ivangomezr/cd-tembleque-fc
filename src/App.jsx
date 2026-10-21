@@ -7,6 +7,7 @@ import { useAuth, authService } from './hooks/useAuth'
 import { setActorProvider, setVoterSessionProvider } from './lib/store'
 import { PullIndicator } from './components/PullIndicator'
 import { store } from './lib/store'
+import TeamCrest from './components/TeamCrest'
 import Inicio from './pages/Inicio'
 import Clasificacion from './pages/Clasificacion'
 import Jugadores from './pages/Jugadores'
@@ -56,7 +57,7 @@ function SplashScreen({ onDone }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 0 50px rgba(41,90,152,0.6), inset 0 0 20px rgba(0,0,0,0.4)',
           }}>
-            <img src={CLUB.crest} alt={CLUB.name} style={{ width: 88, height: 88, objectFit: 'contain' }} />
+            <TeamCrest src={CLUB.crest} name={CLUB.name} size={88} />
           </div>
         </div>
       </div>
