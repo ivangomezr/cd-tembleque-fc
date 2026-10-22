@@ -14,7 +14,7 @@ import { mvpCierre, votacionAbierta, candidatosMvp, ganadorMvp } from './mvp'
 import {
   ValidationError, validarJugador, validarTemporada, validarEquipo, validarPartido, validarPartidoLiga,
   validarConvocados, validarMvp, validarAlineacion, validarEvento, validarBorrarEvento, validarEstadistica,
-  validarVoto, textoOk, urlOk, validarFinalistas, exigirFinalistas,
+  validarVoto, textoOk, urlOk, validarFinalistas, exigirFinalistas, validarCapitan,
 } from './validation'
 
 const USE_SUPABASE = SUPABASE_READY
@@ -291,12 +291,15 @@ export const store = {
   // ── Players ────────────────────────────────────────────────────────────────
   async addJugador(j) {
     j = validarJugador(j, { jugadores: _jugadores, local: !USE_SUPABASE })
-    const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible' })
+    const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible', capitania: j.capitania ?? null })
     _jugadores = [..._jugadores, row]
     await log('Añadió', 'Jugador', j.nombre)
     notify()
   },
   async updateJugador(id, data) {
+    // Fields a form doesn't show keep their current value (the admin list doesn't edit the status)
+    const actual = _jugadores.find((j) => j.id === id) || {}
+    data = { estado: actual.estado, estado_desc: _privado.get(id) ?? actual.estado_desc, capitania: actual.capitania ?? null, ...data }
     data = validarJugador(data, { jugadores: _jugadores, id, local: !USE_SUPABASE })
     const patch = {
       nombre: data.nombre,
@@ -304,6 +307,7 @@ export const store = {
       dorsal: data.dorsal,
       foto_url: data.foto_url || null,
       estado: data.estado || 'disponible',
+      capitania: data.capitania,
     }
     const estado_desc = data.estado_desc || null
     if (USE_SUPABASE) {
@@ -370,7 +374,7 @@ export const store = {
 
   async updatePartido(id, data) {
     const fields = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'campo', 'jugado', 'goles_local',
-      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id', 'equipacion', 'mvp_finalistas']
+      'goles_visitante', 'amistoso', 'escudo_rival_url', 'convocados', 'mvp_jugador_id', 'equipacion', 'mvp_finalistas', 'capitan_id']
     const patch = Object.fromEntries(fields.filter((f) => data[f] !== undefined).map((f) => [f, data[f]]))
     if (patch.hora === '') patch.hora = null
     const before = _partidos.find((x) => x.id === id)
@@ -391,6 +395,10 @@ export const store = {
     }
     if ('equipacion' in patch && !['local', 'visitante'].includes(patch.equipacion)) throw new ValidationError('Elige una equipación válida.')
     if ('convocados' in patch) patch.convocados = await store.validarConvocatoria(id, patch.convocados)
+    if ('capitan_id' in patch) {
+      const titulares = startersFromLineup(await store.getAlineacion(id))
+      patch.capitan_id = validarCapitan(patch.capitan_id, { titulares, jugadores: _jugadores })
+    }
     if ('mvp_finalistas' in patch) patch.mvp_finalistas = validarFinalistas(patch.mvp_finalistas, { partido: { ...before, ...patch }, jugadores: _jugadores })
     if (patch.jugado && !before.jugado) exigirFinalistas({ ...before, ...patch })
     await db.update('partidos', { id }, patch)
@@ -592,6 +600,12 @@ export const store = {
     const ctx = await store.contextoPartido(partido_id)
     validarAlineacion(formacion, jugadoresAlin, ctx)
     await db.upsert('alineaciones', [{ partido_id, formacion, jugadores: jugadoresAlin, temporada_id: tid() }], ['partido_id'])
+    // A captain who is no longer in the XI loses the armband (the database does the same)
+    const cap = _partidos.find((p) => p.id === partido_id)?.capitan_id
+    if (cap && !startersFromLineup({ jugadores: jugadoresAlin }).includes(cap)) {
+      if (!USE_SUPABASE) await db.update('partidos', { id: partido_id }, { capitan_id: null })
+      _partidos = _partidos.map((p) => (p.id === partido_id ? { ...p, capitan_id: null } : p))
+    }
     if (_partidos.find((p) => p.id === partido_id)?.jugado) await store.recalcularPartido(partido_id)
     const p = _partidos.find((x) => x.id === partido_id)
     await log('Alineación', 'Alineación', `J${p?.jornada} — ${formacion}`)

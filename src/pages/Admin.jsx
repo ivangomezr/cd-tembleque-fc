@@ -19,6 +19,8 @@ import PlayerAvatar from '../components/PlayerAvatar'
 import { votacionAbierta, mvpCierre } from '../lib/mvp'
 import Icon from '../components/Icon'
 import { StatIcon } from '../components/EventIcons'
+import { CAPITANIA } from '../lib/players'
+import CapitanPicker from '../components/CapitanPicker'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
 const Avatar = ({ jugador, size = 'sm' }) => <PlayerAvatar jugador={jugador} size={size === 'sm' ? 32 : size === 'md' ? 42 : 64} />
@@ -53,7 +55,7 @@ const Modal = ({ title, onClose, children }) => <Sheet title={title} onClose={on
 // ---- Panel Jugadores ----
 function PanelJugadores({ jugadores, store }) {
   const [modal, setModal] = useState(null)
-  const empty = { nombre: '', posicion: 'Delantero', dorsal: '', foto_url: '' }
+  const empty = { nombre: '', posicion: 'Delantero', dorsal: '', foto_url: '', capitania: null }
   const [form, setForm] = useState(empty)
   const [fotoArchivo, setFotoArchivo] = useState(null)
   const [fotoPreview, setFotoPreview] = useState(null)
@@ -62,7 +64,7 @@ function PanelJugadores({ jugadores, store }) {
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrorValidacion(null); }
   const openAdd = () => { setForm(empty); setFotoArchivo(null); setFotoPreview(null); setErrorValidacion(null); setModal({ mode: 'add' }) }
   const openEdit = (j) => {
-    setForm({ nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal, foto_url: j.foto_url || '' })
+    setForm({ nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal, foto_url: j.foto_url || '', capitania: j.capitania ?? null })
     setFotoArchivo(null)
     setFotoPreview(j.foto_url || null)
     setErrorValidacion(null)
@@ -116,7 +118,7 @@ function PanelJugadores({ jugadores, store }) {
             <Avatar jugador={j} size="sm" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{j.nombre}</div>
-              <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>{j.posicion} · #{j.dorsal}</div>
+              <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>{j.posicion} · #{j.dorsal}{CAPITANIA[j.capitania] && <span className="with-icon" style={{ gap: 2, marginLeft: 6, color: 'var(--primary)', fontWeight: 700 }}><Icon name="captain" /> {CAPITANIA[j.capitania].label}</span>}</div>
             </div>
             <button onClick={() => openEdit(j)} style={{ background: 'none', border: '1px solid #b9cbe2', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--primary)' }}>Editar</button>
             <button onClick={() => del(j.id)} aria-label={`Eliminar a ${j.nombre}`} style={{ background: 'none', border: '1px solid #fcc', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#c0392b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={14} /></button>
@@ -132,6 +134,12 @@ function PanelJugadores({ jugadores, store }) {
             </select>
           </div>
           <div className="form-group"><label className="label">Dorsal</label><input className="input" type="number" inputMode="numeric" min="1" max="99" step="1" value={form.dorsal ?? ''} onChange={e => set('dorsal', e.target.value)} placeholder="Del 1 al 99 (opcional)" /></div>
+          <div className="form-group"><label className="label" htmlFor="adm-cap">Capitanía</label>
+            <select id="adm-cap" className="select" value={form.capitania ?? ''} onChange={e => set('capitania', e.target.value === '' ? null : Number(e.target.value))}>
+              <option value="">No es capitán</option>
+              {Object.entries(CAPITANIA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
           <div className="form-group">
             <label className="label">Foto de perfil</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -496,6 +504,7 @@ function PanelStats({ jugadores, partidos, stats, store }) {
   const [form, setForm] = useState(emptyS)
   const [mvpSel, setMvpSel] = useState('')
   const [eventos, setEventos] = useState([])
+  const [titularesIds, setTitularesIds] = useState([])
   const [errorValidacion, setErrorValidacion] = useState(null)
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrorValidacion(null) }
 
@@ -506,7 +515,11 @@ function PanelStats({ jugadores, partidos, stats, store }) {
     setMvpSel(partidoActual?.mvp_jugador_id ? String(partidoActual.mvp_jugador_id) : '')
     if (partidoActual) store.getEventos(partidoActual.id).then(setEventos)
     else setEventos([])
+    if (partidoActual) store.getAlineacion(partidoActual.id).then(a => setTitularesIds((a?.jugadores || []).map(s => (s && typeof s === 'object' ? s.jugador_id : s)).filter(Boolean).map(Number)))
+    else setTitularesIds([])
   }, [partidoSel, partidos.length])
+  const cambiarCapitan = (id) => store.updatePartido(partidoActual.id, { capitan_id: id })
+    .then(() => haptics.success?.(), (e) => window.alert(messageFor(e)))
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('partido')
@@ -606,6 +619,7 @@ function PanelStats({ jugadores, partidos, stats, store }) {
             </>
             )}
           </div>
+          <CapitanPicker id="adm-capitan" titularesIds={titularesIds} jugadores={jugadores} value={partidoActual?.capitan_id} onChange={cambiarCapitan} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={{ fontSize: 14, color: 'var(--gris-mid)' }}>{filas.length} jugadores</span>
             <button onClick={openAdd} className="btn btn-primary btn-sm">+ Añadir jugador</button>

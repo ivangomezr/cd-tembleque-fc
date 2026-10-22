@@ -2,14 +2,14 @@ import { useState } from 'react'
 import Sheet from './Sheet'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
 import { LIMITS } from '../lib/validation'
-import { ESTADOS, POSICIONES, initials } from '../lib/players'
+import { ESTADOS, POSICIONES, CAPITANIA, initials } from '../lib/players'
 import Icon from './Icon'
 
 /** Admin form to edit a player (name, number, position, photo, availability). */
 export default function PlayerEditSheet({ jugador, store, onClose }) {
   const [form, setForm] = useState({
     nombre: jugador.nombre, posicion: jugador.posicion, dorsal: jugador.dorsal ?? '', foto_url: jugador.foto_url || '',
-    estado: jugador.estado || 'disponible', estado_desc: jugador.estado_desc || '',
+    estado: jugador.estado || 'disponible', estado_desc: jugador.estado_desc || '', capitania: jugador.capitania ?? null,
   })
   const [fotoArchivo, setFotoArchivo] = useState(null)
   const [fotoPreview, setFotoPreview] = useState(jugador.foto_url || null)
@@ -53,6 +53,13 @@ export default function PlayerEditSheet({ jugador, store, onClose }) {
           <label className="label" htmlFor="pe-dorsal">Dorsal</label>
           <input id="pe-dorsal" className="input" type="number" inputMode="numeric" min="1" max="99" value={form.dorsal} onChange={(e) => set('dorsal', e.target.value)} placeholder="1-99" />
         </div>
+      </div>
+      <div className="form-group">
+        <label className="label" htmlFor="pe-cap">Capitanía</label>
+        <select id="pe-cap" className="select" value={form.capitania ?? ''} onChange={(e) => set('capitania', e.target.value === '' ? null : Number(e.target.value))}>
+          <option value="">No es capitán</option>
+          {Object.entries(CAPITANIA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
       </div>
       <div className="form-group">
         <span className="label">Foto</span>

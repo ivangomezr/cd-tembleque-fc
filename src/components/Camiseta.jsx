@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { KITS, GK_KITS, DEFAULT_KIT } from '../config/club'
+import Icon from './Icon'
 
 /** Shirt silhouette shared by the body fill and the pattern clip. */
 const BODY = 'M25 10 L8 30 L22 38 L25 34 L25 82 L75 82 L75 34 L78 38 L92 30 L75 10 L64 14 Q50 24 36 14 Z'
@@ -45,7 +46,7 @@ export function ShirtSvg({ kit = DEFAULT_KIT, dorsal = '', size = 60, highlight 
 }
 
 /** Shirt with the player's number and name, as drawn on the pitch. */
-export default function Camiseta({ nombre, dorsal, pequeña = false, destacado = false, badge = null, kit = DEFAULT_KIT, portero = false }) {
+export default function Camiseta({ nombre, dorsal, pequeña = false, destacado = false, badge = null, kit = DEFAULT_KIT, portero = false, capitan = false }) {
   const size = pequeña ? 50 : 60
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: size + 8 }}>
@@ -53,6 +54,11 @@ export default function Camiseta({ nombre, dorsal, pequeña = false, destacado =
         <ShirtSvg kit={kit} dorsal={dorsal ?? '?'} size={size} highlight={destacado} portero={portero} />
         {badge && (
           <span style={{ position: 'absolute', top: -6, right: -10, zIndex: 2 }}>{badge}</span>
+        )}
+        {capitan && (
+          <span className="armband" title="Capitán" role="img" aria-label="Capitán">
+            <Icon name="captain-filled" size={pequeña ? 15 : 17} />
+          </span>
         )}
       </div>
       <div style={{

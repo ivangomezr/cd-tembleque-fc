@@ -5,7 +5,7 @@ import {
   validarJugador, validarPartido, validarPartidoLiga, validarEvento, validarBorrarEvento, validarAlineacion,
   validarEstadistica, validarConvocados, validarVoto, validarTemporada, validarEquipo, debeMarcarseJugado,
   limitesMinuto, urlOk, FORMACIONES_VALIDAS, ESTADOS_JUGADOR, POSICIONES,
-  validarFinalistas, exigirFinalistas, candidatosNecesarios, necesitaCandidatos,
+  validarFinalistas, exigirFinalistas, candidatosNecesarios, necesitaCandidatos, validarCapitan,
 } from '../validation'
 import { timelineIssue } from '../timeline'
 import { ESTADOS, POSICIONES as POSICIONES_UI } from '../players'
@@ -390,5 +390,22 @@ describe('candidatos al MVP', () => {
   it('un partido antiguo (votación ya cerrada) no los necesita', () => {
     expect(necesitaCandidatos({ ...partido, fecha: '2026-10-10' }, now)).toBe(false)
     expect(() => exigirFinalistas({ ...partido, fecha: '2026-10-10', jugado: true }, now)).not.toThrow()
+  })
+})
+
+describe('capitanía', () => {
+  const base = { nombre: 'Pedro', posicion: 'Defensa' }
+  it('primer, segundo o ninguno', () => {
+    expect(validarJugador({ ...base, capitania: 1 }).capitania).toBe(1)
+    expect(validarJugador({ ...base, capitania: '2' }).capitania).toBe(2)
+    expect(validarJugador({ ...base, capitania: '' }).capitania).toBeNull()
+    expect(validarJugador(base).capitania).toBeNull()
+    expect(() => validarJugador({ ...base, capitania: 3 })).toThrow('Elige primer capitán, segundo capitán o ninguno.')
+  })
+  it('el capitán del partido tiene que ser titular', () => {
+    const jugadores = [{ id: 5, nombre: 'Dani López' }, { id: 6, nombre: 'Ivi' }]
+    expect(validarCapitan(5, { titulares: [5, 8], jugadores })).toBe(5)
+    expect(validarCapitan(null, { titulares: [5], jugadores })).toBeNull()
+    expect(() => validarCapitan(6, { titulares: [5], jugadores })).toThrow('Ivi no está en el once inicial: el capitán tiene que ser titular.')
   })
 })
