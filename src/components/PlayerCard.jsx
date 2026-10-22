@@ -28,7 +28,7 @@ export default function PlayerCard({ jugador: j, href, onOpen, priority = false 
       <div className="player-card__top" aria-hidden="true">
         {j.posicion && <span className="player-card__pos">{POS_CORTA[j.posicion] || j.posicion}</span>}
         <span className="player-card__badges">
-          {CAPITANIA[j.capitania] && <span className={`player-card__cap player-card__cap--${j.capitania}`} title={CAPITANIA[j.capitania].label}><Icon name="captain-filled" size={15} />{j.capitania === 2 && <small>2</small>}</span>}
+          {CAPITANIA[j.capitania] && <span className={`player-card__cap player-card__cap--${j.capitania}`} title={CAPITANIA[j.capitania].label}><Icon name="captain-filled" size={15} /></span>}
           {estado?.icono && <span className="player-card__status" style={{ color: estado.color }} title={estado.label}><Icon name={estado.icono} /></span>}
         </span>
       </div>
