@@ -62,7 +62,7 @@ export const hasBadges = (info) => !!info && !!(info.goles || info.propia || inf
 /** Same icon for each statistic everywhere (stats page, admin, player page). */
 const STAT_ICONS = {
   goles: 'ball', asistencias: 'shoe', minutos: 'clock', partidos: 'calendar-check', titularidades: 'shirt',
-  paradas: 'hand-stop', goles_encajados: 'soccer-field', mvp: 'star-filled',
+  paradas: 'hand-stop', goles_encajados: 'soccer-field', mvp: 'star-filled', mvps: 'star-filled',
 }
 export function StatIcon({ stat, size = '1.15em', title }) {
   if (stat === 'tarjetas_amarillas' || stat === 'tarjetas_rojas') {

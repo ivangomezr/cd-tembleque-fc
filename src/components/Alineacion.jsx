@@ -63,7 +63,7 @@ function Campo({ slots, jugadores, formacion, onSlotClick, mvpId, badges = {}, k
             return (
               <div key={slot.posicion} onClick={click} style={{ cursor: click ? 'pointer' : 'default' }}>
                 {j ? (
-                  <Camiseta nombre={j.nombre} dorsal={j.dorsal} pequeña={n >= 4} destacado={j.id === mvpId} badge={badges[j.id]} kit={kit} />
+                  <Camiseta nombre={j.nombre} dorsal={j.dorsal} pequeña={n >= 4} destacado={j.id === mvpId} badge={badges[j.id]} kit={kit} portero={linea === 0} />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: n >= 4 ? 58 : 68 }}>
                     <div style={{ width: n >= 4 ? 44 : 52, height: n >= 4 ? 40 : 46, border: '2px dashed rgba(255,255,255,0.45)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 20 }}>{onSlotClick ? '+' : '—'}</div>
