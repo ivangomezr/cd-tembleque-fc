@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Camiseta from './Camiseta'
 import Sheet from './Sheet'
 import { messageFor } from '../lib/dbErrors'
+import Icon from './Icon'
 
 /** Football 11 formations: outfield lines from defence to attack. */
 export const FORMACIONES = {
@@ -112,16 +113,16 @@ function Editor({ inicial, jugadores, elegibles, onSave, onClose, kit }) {
   const total = lineas(formacion).length
 
   return (
-    <Sheet title="✏️ Editar alineación" onClose={() => onClose()}>
+    <Sheet title="Editar alineación" onClose={() => onClose()}>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {Object.keys(FORMACIONES).map((f) => (
           <button key={f} className={`chip ${formacion === f ? 'active' : ''}`} onClick={() => cambiarFormacion(f)}>{f}</button>
         ))}
       </div>
-      {!elegibles?.length && <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginBottom: 10 }}>💡 Si guardas antes la convocatoria, aquí solo aparecerán los convocados.</p>}
+      {!elegibles?.length && <p style={{ fontSize: 12, color: 'var(--gris-mid)', marginBottom: 10 }}><Icon name="bulb" /> Si guardas antes la convocatoria, aquí solo aparecerán los convocados.</p>}
       <Campo slots={slots} jugadores={jugadores} formacion={formacion} onSlotClick={setSlotSel} kit={kit} />
       <div style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '8px 0 12px', textAlign: 'center' }}>{usados.size}/11 titulares · toca una posición para asignar</div>
-      {error && <div className="alert-error">⚠️ {error}</div>}
+      {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
       <button onClick={save} disabled={guardando} className="btn btn-primary btn-block">{guardando ? 'Guardando…' : 'Guardar alineación'}</button>
 
       {slotSel && (
@@ -154,7 +155,7 @@ export default function Alineacion({ jugadores, alineacionInicial, onSave, modoE
     <div>
       <Campo slots={slots} jugadores={jugadores} formacion={formacion} mvpId={mvpId} badges={badges} kit={kit} />
       {modoEdicion && (
-        <button onClick={() => setAbierto(true)} className="btn btn-ghost btn-block" style={{ marginTop: 10 }}>✏️ Editar alineación</button>
+        <button onClick={() => setAbierto(true)} className="btn btn-ghost btn-block" style={{ marginTop: 10 }}><span className="with-icon"><Icon name="pencil" /> Editar alineación</span></button>
       )}
       {abierto && (
         <Editor

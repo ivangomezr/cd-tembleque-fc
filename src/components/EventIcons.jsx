@@ -1,3 +1,4 @@
+import Icon from './Icon'
 /**
  * Small, consistent icons for match events (timeline, pitch shirts, substitutes).
  *   GoalIcon variant: 'normal' | 'penalty' (navy "P" tag) | 'own' (red ball, "PP" tag)
@@ -9,10 +10,7 @@ export function GoalIcon({ variant = 'normal', size = 16 }) {
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size + 2, height: size + 2, flexShrink: 0 }}
       title={variant === 'penalty' ? 'Gol de penalti' : own ? 'Gol en propia puerta' : 'Gol'}>
-      <span style={{
-        fontSize: size, lineHeight: 1, borderRadius: '50%',
-        ...(own ? { background: '#d63a2f', boxShadow: '0 0 0 2px #d63a2f', filter: 'saturate(0.6)' } : {}),
-      }}>⚽</span>
+      <Icon name="ball" size={size} style={{ color: own ? '#d63a2f' : 'var(--navy)' }} />
       {tag && (
         <span style={{
           position: 'absolute', right: -size * 0.45, bottom: -size * 0.25,
@@ -60,3 +58,16 @@ export function PlayerBadges({ info, size = 11 }) {
 
 /** Has the player anything worth a badge? */
 export const hasBadges = (info) => !!info && !!(info.goles || info.propia || info.amarillas || info.roja || info.segunda)
+
+/** Same icon for each statistic everywhere (stats page, admin, player page). */
+const STAT_ICONS = {
+  goles: 'ball', asistencias: 'shoe', minutos: 'clock', partidos: 'calendar-check', titularidades: 'shirt',
+  paradas: 'hand-stop', goles_encajados: 'soccer-field', mvp: 'star-filled',
+}
+export function StatIcon({ stat, size = '1.15em', title }) {
+  if (stat === 'tarjetas_amarillas' || stat === 'tarjetas_rojas') {
+    const px = typeof size === 'number' ? size : 14
+    return <span title={title} style={{ display: 'inline-flex', verticalAlign: '-0.15em' }}><CardIcon color={stat === 'tarjetas_rojas' ? 'red' : 'yellow'} size={px} /></span>
+  }
+  return <Icon name={STAT_ICONS[stat] || 'chart-bar'} size={size} title={title} />
+}

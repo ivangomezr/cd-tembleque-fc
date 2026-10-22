@@ -18,14 +18,14 @@
  */
 
 export const EVENT_TYPES = {
-  gol: { label: 'Gol', icon: '⚽', goal: true },
-  gol_penalti: { label: 'Gol de penalti', icon: '⚽', goal: true, badge: 'P' },
-  gol_propia: { label: 'Gol en propia', icon: '⚽', goal: true, badge: 'PP' },
-  penalti_fallado: { label: 'Penalti fallado', icon: '❌' },
+  gol: { label: 'Gol', icon: 'ball', goal: true },
+  gol_penalti: { label: 'Gol de penalti', icon: 'ball', goal: true, badge: 'P' },
+  gol_propia: { label: 'Gol en propia', icon: 'ball', goal: true, badge: 'PP' },
+  penalti_fallado: { label: 'Penalti fallado', icon: 'circle-x' },
   amarilla: { label: 'Tarjeta amarilla', icon: 'yellow' },
   segunda_amarilla: { label: 'Segunda amarilla', icon: 'second-yellow' },
   roja: { label: 'Tarjeta roja', icon: 'red' },
-  cambio: { label: 'Cambio', icon: '🔄' },
+  cambio: { label: 'Cambio', icon: 'arrows-exchange' },
 }
 
 export const isGoal = (e) => !!EVENT_TYPES[e.tipo]?.goal

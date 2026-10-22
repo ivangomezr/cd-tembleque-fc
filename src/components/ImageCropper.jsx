@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Icon from './Icon'
 
 /**
  * ImageCropper — selector circular de recorte de imagen
@@ -223,13 +224,13 @@ export default function ImageCropper({ src, onCrop, onCancel }) {
 
         {/* Slider de zoom */}
         <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 16 }}>🔍</span>
+          <Icon name="zoom-out" size={18} style={{ color: '#aaa' }} />
           <input
             type="range" min="0" max="100" value={sliderVal}
             onChange={onSliderChange}
             style={{ flex: 1, accentColor: 'var(--primary)' }}
           />
-          <span style={{ fontSize: 18 }}>🔍</span>
+          <Icon name="zoom-in" size={22} style={{ color: '#aaa' }} />
         </div>
 
         {/* Botones */}
@@ -244,7 +245,7 @@ export default function ImageCropper({ src, onCrop, onCancel }) {
             onClick={handleCrop}
             style={{ flex: 2, padding: '12px', background: 'var(--primary)', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
           >
-            ✓ Usar esta foto
+            <span className="with-icon"><Icon name="check" /> Usar esta foto</span>
           </button>
         </div>
       </div>

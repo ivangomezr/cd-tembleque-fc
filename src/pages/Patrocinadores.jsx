@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../hooks/useStore'
 import { useAuth } from '../hooks/useAuth'
 import { messageFor } from '../lib/dbErrors'
+import Icon from '../components/Icon'
 
 export default function Patrocinadores() {
     const { store } = useStore()
@@ -58,7 +59,7 @@ export default function Patrocinadores() {
 
             {!loading && lista.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                    <div style={{ fontSize: 56, marginBottom: '1rem' }}>🤝</div>
+                    <Icon name="handshake" size={56} strokeWidth={1.5} style={{ color: 'var(--primary-light)', opacity: 0.7, display: 'block', margin: '0 auto 1rem' }} />
                     <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', marginBottom: 8 }}>
                         Sin patrocinadores aún
                     </div>
@@ -84,9 +85,9 @@ export default function Patrocinadores() {
                         )}
                         {isAdmin && (
                             <button
-                                onClick={() => handleDelete(p.id)}
+                                onClick={() => handleDelete(p.id)} aria-label={`Eliminar ${p.nombre || 'patrocinador'}`}
                                 style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(192,57,43,0.85)', border: 'none', borderRadius: 6, width: 26, height: 26, color: 'white', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                ✕
+                                <Icon name="x" size={14} />
                             </button>
                         )}
                     </div>
@@ -101,7 +102,7 @@ export default function Patrocinadores() {
                         <div style={{ width: 36, height: 4, background: '#ddd', borderRadius: 2, margin: '-0.5rem auto 1.25rem' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                             <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)' }}>Nuevo patrocinador</h2>
-                            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#aaa' }}>✕</button>
+                            <button onClick={() => setShowForm(false)} aria-label="Cerrar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', display: 'flex', padding: 4 }}><Icon name="x" size={22} /></button>
                         </div>
 
                         {error && <div style={{ background: '#fde8e8', border: '1px solid #f5c0c0', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#c0392b' }}>{error}</div>}
@@ -112,7 +113,7 @@ export default function Patrocinadores() {
                             {preview
                                 ? <img src={preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
                                 : <div style={{ textAlign: 'center', color: 'var(--gris-mid)' }}>
-                                    <div style={{ fontSize: 36, marginBottom: 8 }}>🖼️</div>
+                                    <Icon name="photo" size={36} strokeWidth={1.5} style={{ color: 'var(--primary-light)', display: 'block', margin: '0 auto 8px' }} />
                                     <div style={{ fontSize: 14, fontWeight: 600 }}>Toca para elegir logo</div>
                                 </div>
                             }
@@ -125,7 +126,7 @@ export default function Patrocinadores() {
                         </div>
 
                         <button onClick={handleSubmit} disabled={saving} className="btn btn-primary btn-block" style={{ opacity: saving ? 0.7 : 1 }}>
-                            {saving ? 'Guardando...' : '🤝 Añadir patrocinador'}
+                            {saving ? 'Guardando...' : <span className="with-icon"><Icon name="plus" /> Añadir patrocinador</span>}
                         </button>
                     </div>
                 </>

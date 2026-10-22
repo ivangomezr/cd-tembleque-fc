@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       })
     }
     const payload = JSON.stringify({
-      title: `⚽ Resultado: vs ${rival}`,
+      title: `Resultado: vs ${rival}`,
       body: `${resultado} · ¡Vota al MVP del partido!`,
       icon: '/icon-192.png',
       badge: '/icon-192.png',

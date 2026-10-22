@@ -6,11 +6,13 @@ import TeamCrest from '../../components/TeamCrest'
 import Sheet from '../../components/Sheet'
 import { validarPartidoLiga, validarEquipo, validarTemporada, debeMarcarseJugado, LIMITS } from '../../lib/validation'
 import { messageFor } from '../../lib/dbErrors'
+import Icon from '../../components/Icon'
+import { ZONES } from '../../lib/standings'
 
 const SECTIONS = [
-  { key: 'resultados', label: '📅 Jornadas' },
-  { key: 'equipos', label: '🛡️ Equipos' },
-  { key: 'config', label: '⚙️ Zonas' },
+  { key: 'resultados', label: 'Jornadas', icon: 'calendar' },
+  { key: 'equipos', label: 'Equipos', icon: 'shield-half' },
+  { key: 'config', label: 'Zonas', icon: 'settings' },
 ]
 
 export default function PanelLiga() {
@@ -19,7 +21,7 @@ export default function PanelLiga() {
     <div>
       <div className="segmented" style={{ marginBottom: 14 }}>
         {SECTIONS.map((s) => (
-          <button key={s.key} className={section === s.key ? 'active' : ''} onClick={() => setSection(s.key)}>{s.label}</button>
+          <button key={s.key} className={section === s.key ? 'active' : ''} onClick={() => setSection(s.key)}><span className="with-icon"><Icon name={s.icon} /> {s.label}</span></button>
         ))}
       </div>
       {section === 'resultados' && <Resultados />}
@@ -95,7 +97,7 @@ function Resultados() {
   }
 
   if (equipos.length < 2) {
-    return <div className="empty">Añade primero los equipos del grupo en <strong>🛡️ Equipos</strong>.</div>
+    return <div className="empty">Añade primero los equipos del grupo en <strong>Equipos</strong>.</div>
   }
 
   return (
@@ -132,7 +134,7 @@ function Resultados() {
           )
         })}
       </div>
-      {deJornada.some((r) => r.own) && <p style={{ fontSize: 11, color: 'var(--gris-mid)', marginBottom: 10 }}>El partido resaltado es el nuestro: se edita desde ⚽ Partidos.</p>}
+      {deJornada.some((r) => r.own) && <p style={{ fontSize: 11, color: 'var(--gris-mid)', marginBottom: 10 }}>El partido resaltado es el nuestro: se edita desde Admin › Partidos.</p>}
       {libres.length >= 2 && <button className="btn btn-primary btn-block" onClick={openAdd}>+ Añadir partido a la jornada {jornada}</button>}
       {libres.length === 1 && <p style={{ fontSize: 12, color: 'var(--gris-mid)', textAlign: 'center' }}>Descansa: {libres[0].nombre}</p>}
 
@@ -157,7 +159,7 @@ function Resultados() {
           </div>
           {edit.auto && edit.data.jugado && (
             <p style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
-              ✓ Marcado automáticamente porque la fecha ya pasó. Indica el resultado.
+              <Icon name="check" /> Marcado automáticamente porque la fecha ya pasó. Indica el resultado.
             </p>
           )}
           {edit.data.jugado && (
@@ -170,12 +172,12 @@ function Resultados() {
               ))}
             </div>
           )}
-          {error && <div className="alert-error">⚠️ {error}</div>}
-          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar'}</button>
+          {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
+          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? <><Icon name="loader" spin /> Guardando…</> : 'Guardar'}</button>
           {edit.mode === 'edit' && (
             <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
               onClick={async () => { if (window.confirm('¿Eliminar este partido de la liga?')) { try { await store.deletePartidoLiga(edit.id); setEdit(null) } catch (e) { setError(messageFor(e)) } } }}>
-              🗑️ Eliminar partido
+              <span className="with-icon"><Icon name="trash" /> Eliminar partido</span>
             </button>
           )}
         </Sheet>
@@ -260,7 +262,7 @@ function Equipos() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {preview ? <TeamCrest src={preview} name="" alt="" size={52} /> : <TeamCrest team={{ nombre: edit.data.nombre }} size={52} />}
               <label style={{ flex: 1, background: 'var(--primary-pale)', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
-                📷 {preview ? 'Cambiar escudo' : 'Subir escudo'}
+                <Icon name="camera" /> {preview ? 'Cambiar escudo' : 'Subir escudo'}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f); setPreview(URL.createObjectURL(f)) } }} />
               </label>
             </div>
@@ -269,12 +271,12 @@ function Equipos() {
             <label className="label">Puntos de sanción <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(se restan en la clasificación)</span></label>
             <input className="input" type="number" min="0" max={LIMITS.sancion} step="1" value={edit.data.sancion_puntos} onChange={(e) => set('sancion_puntos', e.target.value)} />
           </div>
-          {error && <div className="alert-error">⚠️ {error}</div>}
-          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar'}</button>
+          {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
+          <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? <><Icon name="loader" spin /> Guardando…</> : 'Guardar'}</button>
           {edit.mode === 'edit' && !edit.es_propio && (
             <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }}
               onClick={async () => { if (window.confirm('¿Eliminar el equipo y todos sus resultados de liga?')) { try { await store.deleteEquipo(edit.id); setEdit(null) } catch (e) { setError(messageFor(e)) } } }}>
-              🗑️ Eliminar equipo
+              <span className="with-icon"><Icon name="trash" /> Eliminar equipo</span>
             </button>
           )}
         </Sheet>
@@ -310,24 +312,24 @@ function Zonas() {
   }
 
   const fields = [
-    ['zona_ascenso', '🟢 Plazas de ascenso directo'],
-    ['zona_promocion', '🔵 Plazas de promoción'],
-    ['zona_descenso', '🔴 Plazas de descenso'],
+    ['zona_ascenso', 'Plazas de ascenso directo', ZONES.ascenso.color],
+    ['zona_promocion', 'Plazas de promoción', ZONES.promocion.color],
+    ['zona_descenso', 'Plazas de descenso', ZONES.descenso.color],
   ]
   return (
     <div className="card">
       <p style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 14, lineHeight: 1.5 }}>
         Las plazas cambian cada temporada según las bases de competición de la FFCM. Ajústalas aquí y la tabla pintará las zonas automáticamente.
       </p>
-      {fields.map(([k, l]) => (
+      {fields.map(([k, l, c]) => (
         <div className="form-group" key={k}>
-          <label className="label">{l}</label>
+          <label className="label with-icon"><Icon name="circle-filled" size={12} style={{ color: c }} /> {l}</label>
           <input className="input" type="number" min="0" max={Math.min(equipos.length || LIMITS.zonas, LIMITS.zonas)} step="1" value={form[k]} onChange={(e) => { setForm((f) => ({ ...f, [k]: e.target.value === '' ? '' : Number(e.target.value) })); setSaved(false); setError('') }} />
         </div>
       ))}
-      {error && <div className="alert-error">⚠️ {error}</div>}
+      {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
       <button className="btn btn-primary btn-block" onClick={guardar}>
-        {saved ? '✓ Guardado' : 'Guardar zonas'}
+        {saved ? <span className="with-icon"><Icon name="check" /> Guardado</span> : 'Guardar zonas'}
       </button>
     </div>
   )

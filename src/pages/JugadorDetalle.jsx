@@ -8,6 +8,8 @@ import { ShirtSvg } from '../components/Camiseta'
 import TeamCrest from '../components/TeamCrest'
 import PlayerEditSheet from '../components/PlayerEditSheet'
 import AppLink from '../components/AppLink'
+import Icon from '../components/Icon'
+import { StatIcon } from '../components/EventIcons'
 
 const RES = { victoria: { l: 'V', c: 'var(--res-v)' }, empate: { l: 'E', c: 'var(--res-e)' }, derrota: { l: 'D', c: 'var(--res-d)' } }
 const ROL = { titular: 'Titular', suplente: 'Suplente', 'sin minutos': 'Sin minutos', convocado: 'Convocado', 'no convocado': 'No convocado' }
@@ -89,10 +91,10 @@ export default function JugadorDetalle() {
   return (
     <div className="page player anim-fade">
       <nav className="player-nav" aria-label="Navegación de la plantilla">
-        <AppLink className="link-more" to="/jugadores">← Plantilla</AppLink>
+        <AppLink className="link-more" to="/jugadores"><Icon name="arrow-left" /> Plantilla</AppLink>
         <div style={{ display: 'flex', gap: 6 }}>
-          {prev && <AppLink className="player-nav__btn" to={`/jugadores/${prev.id}`} aria-label={`Anterior: ${prev.nombre}`}>‹ {prev.dorsal ?? ''}</AppLink>}
-          {next && <AppLink className="player-nav__btn" to={`/jugadores/${next.id}`} aria-label={`Siguiente: ${next.nombre}`}>{next.dorsal ?? ''} ›</AppLink>}
+          {prev && <AppLink className="player-nav__btn" to={`/jugadores/${prev.id}`} aria-label={`Anterior: ${prev.nombre}`}><Icon name="chevron-left" size={16} />{prev.dorsal ?? ''}</AppLink>}
+          {next && <AppLink className="player-nav__btn" to={`/jugadores/${next.id}`} aria-label={`Siguiente: ${next.nombre}`}>{next.dorsal ?? ''}<Icon name="chevron-right" size={16} /></AppLink>}
         </div>
       </nav>
 
@@ -113,12 +115,12 @@ export default function JugadorDetalle() {
             {j.dorsal != null && <span className="sr-only">Dorsal {j.dorsal}.</span>}
             {j.posicion && <span className={`pos-pill ${POS_CLASS[j.posicion]}`}>{j.posicion}</span>}
             <span className="player-tag" style={estado?.color ? { color: estado.color, background: 'white' } : undefined}>
-              {estado?.icono ? `${estado.icono} ` : ''}{estado?.label || 'Disponible'}
+              {estado?.icono && <Icon name={estado.icono} />} {estado?.label || 'Disponible'}
             </span>
-            {mvps > 0 && <span className="player-tag player-tag--gold">⭐ MVP ×{mvps}</span>}
+            {mvps > 0 && <span className="player-tag player-tag--gold"><Icon name="star-filled" /> MVP ×{mvps}</span>}
           </div>
           {j.estado !== 'disponible' && j.estado_desc && <p className="player-hero__note">{j.estado_desc}</p>}
-          {isAdmin && <button type="button" className="btn btn-sm player-hero__edit" onClick={() => setEditando(true)}>✏️ Editar jugador</button>}
+          {isAdmin && <button type="button" className="btn btn-sm player-hero__edit" onClick={() => setEditando(true)}><span className="with-icon"><Icon name="pencil" /> Editar jugador</span></button>}
         </div>
       </section>
 
@@ -181,12 +183,12 @@ export default function JugadorDetalle() {
                       <span className={`player-log__rol player-log__rol--${rol.replace(/ /g, '-')}`}>{ROL[rol]}</span>
                       <span className="player-log__icons">
                         {stat?.minutos > 0 && <span>{stat.minutos}'</span>}
-                        {stat?.goles > 0 && <span>⚽{stat.goles > 1 ? `×${stat.goles}` : ''}</span>}
-                        {stat?.asistencias > 0 && <span>🅰️{stat.asistencias > 1 ? `×${stat.asistencias}` : ''}</span>}
+                        {stat?.goles > 0 && <span><StatIcon stat="goles" />{stat.goles > 1 ? `×${stat.goles}` : ''}</span>}
+                        {stat?.asistencias > 0 && <span><StatIcon stat="asistencias" />{stat.asistencias > 1 ? `×${stat.asistencias}` : ''}</span>}
                         {stat?.tarjetas_amarillas > 0 && <span className="card-y" title="Amarilla" />}
                         {stat?.tarjetas_rojas > 0 && <span className="card-r" title="Roja" />}
-                        {esPortero && stat?.paradas > 0 && <span>🧤{stat.paradas}</span>}
-                        {mvp && <span>⭐</span>}
+                        {esPortero && stat?.paradas > 0 && <span><StatIcon stat="paradas" />{stat.paradas}</span>}
+                        {mvp && <span style={{ color: '#c99a06' }}><StatIcon stat="mvp" title="MVP" /></span>}
                       </span>
                     </span>
                   </AppLink>

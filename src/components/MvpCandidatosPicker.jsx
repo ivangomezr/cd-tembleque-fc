@@ -1,5 +1,6 @@
 import PlayerAvatar from './PlayerAvatar'
 import { candidatosMvp } from '../lib/mvp'
+import Icon from './Icon'
 
 const corto = (nombre = '') => {
   const [a, ...r] = nombre.trim().split(/\s+/)
@@ -21,7 +22,7 @@ export default function MvpCandidatosPicker({ partido, jugadores, stats, value =
   return (
     <fieldset className="mvp-candidatos" disabled={disabled}>
       <legend className="mvp-candidatos__head">
-        <span className="label" style={{ margin: 0 }}>⭐ Candidatos al MVP</span>
+        <span className="label with-icon" style={{ margin: 0 }}><Icon name="star" /> Candidatos al MVP</span>
         <span className={`mvp-candidatos__count${value.length === necesarios ? ' ok' : ''}`} aria-live="polite">{value.length}/{necesarios}</span>
       </legend>
       <p className="mvp-candidatos__help">
@@ -37,7 +38,7 @@ export default function MvpCandidatosPicker({ partido, jugadores, stats, value =
               <PlayerAvatar jugador={j} size={36} />
               <span className="mvp-pick__name">{corto(j.nombre)}</span>
               <span className="mvp-pick__meta">
-                {j.goles > 0 && `⚽ ${j.goles} `}{j.asistencias > 0 && `🅰️ ${j.asistencias} `}
+                {j.goles > 0 && <span className="with-icon" style={{ gap: 2 }}><Icon name="ball" />{j.goles}</span>}{j.asistencias > 0 && <span className="with-icon" style={{ gap: 2 }}><Icon name="shoe" />{j.asistencias}</span>}
                 {!(j.goles || j.asistencias) && (j.dorsal != null ? `#${j.dorsal}` : j.posicion || '')}
               </span>
             </button>
