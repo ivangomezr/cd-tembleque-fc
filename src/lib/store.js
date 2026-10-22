@@ -155,7 +155,8 @@ const normalizeStat = (s) => ({
 })
 
 /** Columns of `jugadores` readable by visitors (see migration 20261017120000_db_hardening). */
-const JUGADOR_PUBLIC_COLUMNS = 'id, nombre, posicion, dorsal, foto_url, estado, activo, created_at'
+/** Player columns anyone may read (must match the column grants for anon in the migrations). */
+export const JUGADOR_PUBLIC_COLUMNS = 'id, nombre, posicion, dorsal, foto_url, estado, activo, created_at, capitania'
 
 const sortEquipos = (list) => [...list].sort((a, b) => a.nombre.localeCompare(b.nombre))
 

@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(14);
+select plan(15);
 
 -- ── Fixtures (as postgres) ──────────────────────────────────────────────────
 insert into auth.users (id, email) values
@@ -38,6 +38,13 @@ select pg_temp.como('00000000-0000-0000-0000-0000000000c2');
 update public.jugadores set capitania = 1 where id = 604;
 reset role;
 select is((select capitania from public.jugadores where id = 604), null, 'un jugador no puede hacerse capitán');
+
+-- Visitors read the captaincy (public column)
+set local role anon;
+select pg_temp.como(null);
+select is((select capitania from public.jugadores where id = 601), 1::smallint, 'visitante: lee la capitanía');
+reset role; set local role authenticated;
+select pg_temp.como('00000000-0000-0000-0000-0000000000c1');
 
 -- ── Captain of the match ────────────────────────────────────────────────────
 set local role authenticated;
