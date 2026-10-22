@@ -7,23 +7,24 @@ import LoginSheet from './LoginSheet'
 import { CLUB, COMPETITION_LABEL } from '../config/club'
 import PlayerAvatar from './PlayerAvatar'
 import TeamCrest from './TeamCrest'
+import Icon from './Icon'
 
 const tabs = [
-  { to: '/', label: 'Inicio', icon: '🏠' },
-  { to: '/clasificacion', label: 'Tabla', icon: '🏆' },
-  { to: '/jugadores', label: 'Plantilla', icon: '👕' },
-  { to: '/partidos', label: 'Partidos', icon: '⚽' },
-  { to: '/estadisticas', label: 'Stats', icon: '📊' },
+  { to: '/', label: 'Inicio', icon: 'home' },
+  { to: '/clasificacion', label: 'Tabla', icon: 'trophy' },
+  { to: '/jugadores', label: 'Plantilla', icon: 'shirt' },
+  { to: '/partidos', label: 'Partidos', icon: 'ball' },
+  { to: '/estadisticas', label: 'Stats', icon: 'chart-bar' },
 ]
 
 const menuLinks = [
-  { to: '/', label: 'Inicio', icon: '🏠' },
-  { to: '/clasificacion', label: 'Clasificación', icon: '🏆' },
-  { to: '/jugadores', label: 'Plantilla', icon: '👕' },
-  { to: '/partidos', label: 'Partidos', icon: '⚽' },
-  { to: '/estadisticas', label: 'Estadísticas', icon: '📊' },
-  { to: '/patrocinadores', label: 'Patrocinadores', icon: '🤝' },
-  { to: '/historial', label: 'Temporadas', icon: '📚' },
+  { to: '/', label: 'Inicio', icon: 'home' },
+  { to: '/clasificacion', label: 'Clasificación', icon: 'trophy' },
+  { to: '/jugadores', label: 'Plantilla', icon: 'shirt' },
+  { to: '/partidos', label: 'Partidos', icon: 'ball' },
+  { to: '/estadisticas', label: 'Estadísticas', icon: 'chart-bar' },
+  { to: '/patrocinadores', label: 'Patrocinadores', icon: 'handshake' },
+  { to: '/historial', label: 'Temporadas', icon: 'books' },
 ]
 
 export default function Navbar() {
@@ -135,7 +136,7 @@ export default function Navbar() {
             className={`bottom-nav-btn ${location.pathname === t.to || (t.to !== '/' && location.pathname.startsWith(t.to)) ? 'active' : ''}`}
             onClick={() => navigate(t.to)}
           >
-            <span className="nav-icon">{t.icon}</span>
+            <span className="nav-icon"><Icon name={t.icon} size={22} /></span>
             <span>{t.label}</span>
           </button>
         ))}
@@ -174,8 +175,9 @@ export default function Navbar() {
                 </div>
                 <button
                   onClick={() => setShowMenu(false)}
-                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6f8db8', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
-                >✕</button>
+                  aria-label="Cerrar menú"
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#6f8db8', cursor: 'pointer', lineHeight: 1, display: 'flex', padding: 4 }}
+                ><Icon name="x" size={22} /></button>
               </div>
 
               {/* Cuenta sin ficha de jugador (p. ej. administrador) */}
@@ -215,11 +217,11 @@ export default function Navbar() {
                       cursor: 'pointer', textAlign: 'left',
                     }}
                   >
-                    <span style={{ fontSize: 20, width: 24, textAlign: 'center' }}>{link.icon}</span>
+                    <Icon name={link.icon} size={22} style={{ color: activo ? 'white' : '#6b7c96' }} />
                     <span style={{ fontSize: 15, fontWeight: activo ? 700 : 400, color: activo ? 'white' : '#6b7c96', fontFamily: 'DM Sans, sans-serif' }}>
                       {link.label}
                     </span>
-                    {activo && <span style={{ marginLeft: 'auto', color: 'var(--primary-light)', fontSize: 12 }}>●</span>}
+                    {activo && <Icon name="point" size={14} style={{ marginLeft: 'auto', color: 'var(--primary-light)' }} />}
                   </button>
                 )
               })}
@@ -239,7 +241,7 @@ export default function Navbar() {
                     cursor: 'pointer', textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontSize: 20, width: 24, textAlign: 'center' }}>⚙️</span>
+                  <Icon name="settings" size={22} style={{ color: 'white' }} />
                   <span style={{ fontSize: 15, fontWeight: 600, color: '#ffffff', fontFamily: 'DM Sans, sans-serif' }}>
                     Panel Admin
                   </span>
@@ -254,14 +256,14 @@ export default function Navbar() {
                   onClick={handleLogout}
                   style={{ width: '100%', padding: '11px', background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', borderRadius: 10, color: '#e07070', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
                 >
-                  🚪 Cerrar sesión
+                  <span className="with-icon"><Icon name="logout" /> Cerrar sesión</span>
                 </button>
               ) : (
                 <button
                   onClick={openModal}
                   className="btn btn-primary btn-block"
                 >
-                  🔒 Acceso al equipo
+                  <span className="with-icon"><Icon name="login" /> Acceso al equipo</span>
                 </button>
               )}
             </div>

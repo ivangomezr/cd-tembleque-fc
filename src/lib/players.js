@@ -9,10 +9,10 @@ export const POS_CORTA = { Portero: 'POR', Defensa: 'DEF', Centrocampista: 'MED'
 
 export const ESTADOS = {
   disponible: { icono: null, label: 'Disponible', color: null },
-  lesionado: { icono: '✚', label: 'Lesionado', color: '#c0392b' },
-  duda: { icono: '❓', label: 'Duda', color: '#a86b00' },
-  sancionado: { icono: '🟥', label: 'Sancionado', color: '#c0392b' },
-  baja: { icono: '💤', label: 'Baja', color: '#5f6b7a' },
+  lesionado: { icono: 'first-aid', label: 'Lesionado', color: '#c0392b' },
+  duda: { icono: 'help-circle', label: 'Duda', color: '#a86b00' },
+  sancionado: { icono: 'ban', label: 'Sancionado', color: '#c0392b' },
+  baja: { icono: 'zzz', label: 'Baja', color: '#5f6b7a' },
 }
 
 /** By shirt number (players without one go last, then by name). */

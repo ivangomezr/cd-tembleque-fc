@@ -9,6 +9,7 @@ import PlayerAvatar from '../components/PlayerAvatar'
 import AppLink from '../components/AppLink'
 import { useVotacionMvp, MvpVoteSheet, MvpResults, MvpWinner } from '../components/Mvp'
 import { tiempoRestante } from '../lib/mvp'
+import Icon from '../components/Icon'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -127,14 +128,14 @@ function VoteHero({ partido, crestFor, mvp }) {
       {fecha && <p className="vote-hero__meta">{fecha}{partido.campo ? ` · ${partido.campo}` : ''}</p>}
 
       {gracias || miVoto ? (
-        <p className="vote-hero__thanks" role="status">✓ {gracias ? '¡Gracias! ' : ''}Has votado a <b>{(gracias || miVoto).nombre}</b>
+        <p className="vote-hero__thanks" role="status"><Icon name="check" /> {gracias ? '¡Gracias! ' : ''}Has votado a <b>{(gracias || miVoto).nombre}</b>
           <button type="button" onClick={() => setAbierto(true)}>Cambiar</button></p>
       ) : (
-        <button type="button" className="vote-hero__cta" onClick={() => setAbierto(true)}>⭐ Vota al MVP del partido</button>
+        <button type="button" className="vote-hero__cta" onClick={() => setAbierto(true)}><span className="with-icon"><Icon name="star-filled" /> Vota al MVP del partido</span></button>
       )}
       <div className="vote-hero__sub">
-        <span>⏱ {restante ? `Quedan ${restante}` : 'Cerrando…'}</span>
-        <span>👥 {votacion?.total ?? 0} {votacion?.total === 1 ? 'voto' : 'votos'}</span>
+        <span className="with-icon"><Icon name="stopwatch" /> {restante ? `Quedan ${restante}` : 'Cerrando…'}</span>
+        <span className="with-icon"><Icon name="users" /> {votacion?.total ?? 0} {votacion?.total === 1 ? 'voto' : 'votos'}</span>
       </div>
       {(gracias || miVoto) && votacion?.total > 0 && <MvpResults votacion={votacion} max={3} titulo="Así va la votación" />}
 
@@ -154,7 +155,7 @@ function LastMvp({ partido, mvp }) {
     <section className="card anim-fade-up" aria-labelledby="home-mvp">
       <div className="section-head">
         <h2 id="home-mvp">MVP del último partido</h2>
-        <AppLink className="link-more" to={`/partido/${partido.id}`}>Ver partido →</AppLink>
+        <AppLink className="link-more" to={`/partido/${partido.id}`}>Ver partido <Icon name="arrow-right" /></AppLink>
       </div>
       <MvpWinner partido={partido} votacion={mvp.votacion} />
     </section>
@@ -165,7 +166,7 @@ function NextMatch({ partido, ahora, crestFor }) {
   if (!partido) {
     return (
       <section className="card" aria-labelledby="home-next">
-        <div className="section-head"><h2 id="home-next">Próximo partido</h2><AppLink className="link-more" to="/partidos">Calendario →</AppLink></div>
+        <div className="section-head"><h2 id="home-next">Próximo partido</h2><AppLink className="link-more" to="/partidos">Calendario <Icon name="arrow-right" /></AppLink></div>
         <p style={{ color: 'var(--home-muted)' }}>Todavía no hay ningún partido programado.</p>
       </section>
     )
@@ -223,7 +224,7 @@ function FormStrip({ partidos, crestFor }) {
     <section className="card anim-fade-up anim-delay-2" aria-labelledby="home-form">
       <div className="section-head">
         <h2 id="home-form">Forma</h2>
-        <AppLink className="link-more" to="/clasificacion">Clasificación →</AppLink>
+        <AppLink className="link-more" to="/clasificacion">Clasificación <Icon name="arrow-right" /></AppLink>
       </div>
       {!partidos.length ? (
         <p style={{ color: 'var(--home-muted)' }}>Aún no se ha jugado ningún partido de liga.</p>
@@ -254,7 +255,7 @@ function FormStrip({ partidos, crestFor }) {
               )
             })}
           </ol>
-          <div className="form-legend" aria-hidden="true"><span>← Más antiguo</span><span>Más reciente →</span></div>
+          <div className="form-legend" aria-hidden="true"><span className="with-icon"><Icon name="arrow-left" /> Más antiguo</span><span className="with-icon">Más reciente <Icon name="arrow-right" /></span></div>
         </>
       )}
     </section>
@@ -266,7 +267,7 @@ function RecentResults({ partidos }) {
     <section className="card anim-fade-up anim-delay-3" aria-labelledby="home-results">
       <div className="section-head">
         <h2 id="home-results">Últimos resultados</h2>
-        <AppLink className="link-more" to="/partidos">Ver todos →</AppLink>
+        <AppLink className="link-more" to="/partidos">Ver todos <Icon name="arrow-right" /></AppLink>
       </div>
       {!partidos.length ? (
         <p style={{ color: 'var(--home-muted)' }}>Todavía no hay partidos jugados.</p>
@@ -292,7 +293,7 @@ function Leaders({ jugadores, campo, titulo, id, ruta, vacio }) {
     <section className="card anim-fade-up anim-delay-4" aria-labelledby={id}>
       <div className="section-head">
         <h2 id={id}>{titulo}</h2>
-        <AppLink className="link-more" to={ruta}>Ver todos →</AppLink>
+        <AppLink className="link-more" to={ruta}>Ver todos <Icon name="arrow-right" /></AppLink>
       </div>
       {!lista.length ? <p style={{ color: 'var(--home-muted)' }}>{vacio}</p> : (
         <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>

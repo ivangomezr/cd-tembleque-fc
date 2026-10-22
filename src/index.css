@@ -474,7 +474,7 @@ input[type="time"] {
 }
 
 .bottom-nav-btn .nav-icon {
-  font-size: 20px;
+  display: flex;
   line-height: 1;
 }
 
@@ -722,8 +722,10 @@ input[type="time"] {
 .sheet-close {
   background: none;
   border: none;
-  font-size: 22px;
   color: #aaa;
+  display: flex;
+  padding: 4px;
+  cursor: pointer;
 }
 
 .chip {
@@ -776,6 +778,7 @@ input[type="time"] {
 .link-more {
   color: var(--primary-mid); font-size: 13px; font-weight: 700; text-decoration: none;
   padding: 6px 2px; border-radius: 6px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
 }
 .link-more:hover { text-decoration: underline; }
 .home a:focus-visible, .home button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2px; }
@@ -1046,7 +1049,7 @@ input[type="time"] {
 }
 .player-hero__name span { display: block; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; text-transform: none; letter-spacing: 0; color: #dce8f6; margin-bottom: 4px; }
 .player-hero__tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.player-tag { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(255, 255, 255, 0.16); color: white; }
+.player-tag { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(255, 255, 255, 0.16); color: white; display: inline-flex; align-items: center; gap: 4px; }
 .player-tag--gold { background: var(--accent-light); color: var(--navy); }
 .player-hero__note { font-size: 13px; color: #dce8f6; }
 .player-hero__edit { align-self: flex-start; background: white; color: var(--navy); margin-top: 4px; }
@@ -1086,6 +1089,7 @@ input[type="time"] {
 .player-log__row--out .player-log__res { opacity: 0.45; }
 .player-log__row--out .player-log__rival { color: var(--home-muted); font-weight: 600; }
 .player-log__icons { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; }
+.player-log__icons > span { display: inline-flex; align-items: center; gap: 1px; }
 .card-y, .card-r { display: inline-block; width: 9px; height: 12px; border-radius: 2px; }
 .card-y { background: #f0c040; }
 .card-r { background: #d63a2f; }
@@ -1249,7 +1253,7 @@ input[type="time"] {
 .mvp-pick--sel::after { content: '✓'; position: absolute; top: 6px; right: 8px; color: var(--primary); font-weight: 900; }
 .mvp-pick:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2px; }
 .mvp-pick__name { font-size: 12px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
-.mvp-pick__meta { font-size: 10px; color: var(--home-muted); min-height: 13px; }
+.mvp-pick__meta { font-size: 10px; color: var(--home-muted); min-height: 13px; display: inline-flex; align-items: center; gap: 6px; }
 .mvp-more { display: block; margin: 8px auto 0; background: none; border: none; color: var(--primary); font-weight: 700; font-size: 13px; min-height: 36px; cursor: pointer; }
 .mvp-confirm { margin-top: 12px; min-height: 48px; }
 .mvp-note { font-size: 11px; color: var(--home-muted); text-align: center; margin-top: 8px; }
@@ -1278,7 +1282,8 @@ input[type="time"] {
 .mvp-winner__meta { font-size: 12px; color: #cfe0f5; }
 .mvp-winner__share {
   margin-left: auto; flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; border: none; cursor: pointer;
-  background: white; font-size: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: white; color: var(--navy); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex; align-items: center; justify-content: center;
 }
 @media (min-width: 960px) { .vote-hero { padding: 22px 26px 24px; } .vote-hero__goals { font-size: 84px; } }
 @media (prefers-reduced-motion: reduce) { .vote-hero__cta { animation: none; } .mvp-results__track i { transition: none; } }
@@ -1295,3 +1300,13 @@ input[type="time"] {
 .mvp-pick--sm { padding: 8px 2px 6px; border-radius: 12px; }
 .mvp-pick--sm .mvp-pick__name { font-size: 11px; }
 .mvp-pick--off { opacity: 0.45; cursor: not-allowed; }
+
+/* ── SVG icons (components/Icon.jsx) ─────────────────────────────────────── */
+.icon { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
+.icon--spin { animation: icon-spin 0.9s linear infinite; }
+@keyframes icon-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .icon--spin { animation-duration: 2.5s; } }
+/* text + icon on one line (buttons, labels, headings) */
+.with-icon { display: inline-flex; align-items: center; gap: 0.4em; }
+.stat-inline { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stat-inline > span { display: inline-flex; align-items: center; gap: 2px; }

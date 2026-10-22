@@ -7,6 +7,7 @@ import { messageFor } from '../lib/dbErrors'
 import { haptics } from '../lib/haptics'
 import { votacionAbierta, tiempoRestante, porcentaje, candidatosMvp } from '../lib/mvp'
 import { compartirMvp } from '../lib/shareMvp'
+import Icon from './Icon'
 
 const corto = (nombre = '') => {
   const [a, ...r] = nombre.trim().split(/\s+/)
@@ -77,7 +78,7 @@ export function MvpVoteSheet({ partido, votacion, onVoted, onClose }) {
                 <PlayerAvatar jugador={j} size={48} />
                 <span className="mvp-pick__name">{corto(j.nombre)}</span>
                 <span className="mvp-pick__meta">
-                  {j.goles > 0 && `⚽ ${j.goles} `}{j.asistencias > 0 && `🅰️ ${j.asistencias} `}
+                  {j.goles > 0 && <span className="with-icon" style={{ gap: 2 }}><Icon name="ball" />{j.goles}</span>}{j.asistencias > 0 && <span className="with-icon" style={{ gap: 2 }}><Icon name="shoe" />{j.asistencias}</span>}
                   {!(j.goles || j.asistencias) && (j.posicion === 'Portero' ? 'Portero' : j.dorsal != null ? `#${j.dorsal}` : '')}
                   {j.minutos > 0 && ` · ${j.minutos}'`}
                 </span>
@@ -85,11 +86,11 @@ export function MvpVoteSheet({ partido, votacion, onVoted, onClose }) {
             ))}
           </div>
           {!todos && candidatos.length > 6 && (
-            <button type="button" className="mvp-more" onClick={() => setTodos(true)}>Ver los {candidatos.length} convocados ▾</button>
+            <button type="button" className="mvp-more" onClick={() => setTodos(true)}><span className="with-icon">Ver los {candidatos.length} convocados <Icon name="chevron-down" /></span></button>
           )}
         </>
       )}
-      {error && <div className="alert-error" style={{ marginTop: 10 }}>⚠️ {error}</div>}
+      {error && <div className="alert-error" style={{ marginTop: 10 }}><Icon name="alert-triangle" /> {error}</div>}
       <button type="button" className="btn btn-primary btn-block mvp-confirm" disabled={!sel || enviando} onClick={votar}>
         {enviando ? 'Enviando…' : elegido ? (votacion?.miVoto && votacion.miVoto !== sel ? `Cambiar mi voto a ${corto(elegido.nombre)}` : `Votar a ${corto(elegido.nombre)}`) : 'Elige un jugador'}
       </button>
@@ -156,7 +157,7 @@ export function MvpWinner({ partido, votacion }) {
       </div>
       {isAdmin && (
         <button type="button" className="mvp-winner__share" onClick={compartir} disabled={compartiendo} aria-label="Compartir el MVP en Instagram">
-          {compartiendo ? '…' : '📲'}
+          <Icon name={compartiendo ? 'loader' : 'share'} spin={compartiendo} size={20} />
         </button>
       )}
     </div>

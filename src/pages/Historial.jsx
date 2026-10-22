@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../hooks/useStore'
 import { EQUIPO_NOMBRE } from '../config/club'
+import Icon from '../components/Icon'
 
 function fmt(str) { return new Date(str).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) }
 
@@ -37,7 +38,7 @@ export default function Historial() {
         <div className="page">
             <h1 className="page-title">Historial de Temporadas</h1>
             <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🏆</div>
+                <Icon name="trophy" size={48} strokeWidth={1.5} style={{ color: 'var(--primary-light)', opacity: 0.7, display: 'block', margin: '0 auto 12px' }} />
                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', marginBottom: 8 }}>
                     Primera temporada en curso
                 </div>
@@ -77,7 +78,7 @@ export default function Historial() {
                                 display: 'flex', alignItems: 'center', gap: 12
                             }}
                         >
-                            <div style={{ fontSize: 32 }}>🏆</div>
+                            <Icon name="trophy" size={32} strokeWidth={1.5} style={{ color: abierta ? 'var(--accent-light)' : 'var(--primary)' }} />
                             <div style={{ flex: 1 }}>
                                 <div style={{
                                     fontFamily: 'Bebas Neue', fontSize: 20,
@@ -87,8 +88,8 @@ export default function Historial() {
                                     Temporada {t.año} · Archivada
                                 </div>
                             </div>
-                            <div style={{ color: abierta ? '#9fc2ec' : 'var(--gris-light)', fontSize: 20 }}>
-                                {abierta ? '▲' : '▼'}
+                            <div style={{ color: abierta ? '#9fc2ec' : 'var(--gris-light)', display: 'flex' }}>
+                                <Icon name={abierta ? 'chevron-up' : 'chevron-down'} size={22} />
                             </div>
                         </div>
 
@@ -167,7 +168,7 @@ export default function Historial() {
                                                             }}>
                                                                 <div style={{ fontFamily: 'Bebas Neue', fontSize: 16, color: ['#c8991a', '#909090', '#a06030'][i], minWidth: 18 }}>{i + 1}</div>
                                                                 <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>Jugador #{j.jugador_id}</div>
-                                                                <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700 }}>⚽ {j.goles}</div>
+                                                                <div className="with-icon" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700, gap: 3 }}><Icon name="ball" /> {j.goles}</div>
                                                             </div>
                                                         ))}
                                                     </div>

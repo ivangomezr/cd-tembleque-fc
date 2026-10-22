@@ -3,6 +3,7 @@ import Sheet from './Sheet'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
 import { LIMITS } from '../lib/validation'
 import { ESTADOS, POSICIONES, initials } from '../lib/players'
+import Icon from './Icon'
 
 /** Admin form to edit a player (name, number, position, photo, availability). */
 export default function PlayerEditSheet({ jugador, store, onClose }) {
@@ -64,7 +65,7 @@ export default function PlayerEditSheet({ jugador, store, onClose }) {
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', background: 'white', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, cursor: 'pointer', textAlign: 'center', color: 'var(--primary-mid)', fontWeight: 600 }}>
-              📷 {fotoPreview ? 'Cambiar foto' : 'Subir foto'}
+              <Icon name="camera" /> {fotoPreview ? 'Cambiar foto' : 'Subir foto'}
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (!file) return
@@ -84,7 +85,7 @@ export default function PlayerEditSheet({ jugador, store, onClose }) {
       <div className="form-group">
         <label className="label" htmlFor="pe-estado">Estado</label>
         <select id="pe-estado" className="select" value={form.estado} onChange={(e) => set('estado', e.target.value)}>
-          {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.icono ? `${v.icono} ` : ''}{v.label}</option>)}
+          {Object.entries(ESTADOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
       </div>
       {form.estado !== 'disponible' && (
@@ -94,7 +95,7 @@ export default function PlayerEditSheet({ jugador, store, onClose }) {
             placeholder={form.estado === 'lesionado' ? 'Ej: esguince de tobillo' : 'Describe el motivo'} />
         </div>
       )}
-      {error && <div className="alert-error">⚠️ {error}</div>}
+      {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
       <button onClick={save} disabled={saving} className="btn btn-primary btn-block">{saving ? 'Guardando…' : 'Guardar cambios'}</button>
     </Sheet>
   )

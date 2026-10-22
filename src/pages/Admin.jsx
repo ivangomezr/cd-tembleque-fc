@@ -17,6 +17,8 @@ import MvpCandidatosPicker from '../components/MvpCandidatosPicker'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
 import PlayerAvatar from '../components/PlayerAvatar'
 import { votacionAbierta, mvpCierre } from '../lib/mvp'
+import Icon from '../components/Icon'
+import { StatIcon } from '../components/EventIcons'
 
 function initials(n) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }
 const Avatar = ({ jugador, size = 'sm' }) => <PlayerAvatar jugador={jugador} size={size === 'sm' ? 32 : size === 'md' ? 42 : 64} />
@@ -31,12 +33,12 @@ function AdminGuard({ children }) {
   if (!isAdmin) {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: '1rem' }}>🔒</div>
+        <Icon name="lock" size={48} strokeWidth={1.5} style={{ color: 'var(--primary-light)', marginBottom: '1rem' }} />
         <h2 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--primary)', marginBottom: 8 }}>Acceso restringido</h2>
         <p style={{ color: 'var(--gris-mid)', marginBottom: '1.25rem', maxWidth: 300 }}>
           {isLogged
             ? 'Tu cuenta no tiene permisos de administración. Si crees que es un error, habla con el superadministrador.'
-            : <>Abre el menú ☰ y pulsa <strong>"🔒 Acceso al equipo"</strong> para identificarte.</>}
+            : <>Abre el menú <Icon name="menu" title="menú" /> y pulsa <strong>«Acceso al equipo»</strong> para identificarte.</>}
         </p>
         <button className="btn btn-primary" onClick={() => navigate('/')}>Volver al inicio</button>
       </div>
@@ -117,7 +119,7 @@ function PanelJugadores({ jugadores, store }) {
               <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>{j.posicion} · #{j.dorsal}</div>
             </div>
             <button onClick={() => openEdit(j)} style={{ background: 'none', border: '1px solid #b9cbe2', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--primary)' }}>Editar</button>
-            <button onClick={() => del(j.id)} style={{ background: 'none', border: '1px solid #fcc', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#c0392b' }}>✕</button>
+            <button onClick={() => del(j.id)} aria-label={`Eliminar a ${j.nombre}`} style={{ background: 'none', border: '1px solid #fcc', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#c0392b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={14} /></button>
           </div>
         ))}
       </div>
@@ -145,7 +147,7 @@ function PanelJugadores({ jugadores, store }) {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', background: 'white', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '8px 14px', fontSize: 13, cursor: 'pointer', textAlign: 'center', color: 'var(--primary-mid)', fontWeight: 600 }}>
-                  📷 {fotoPreview ? 'Cambiar foto' : 'Subir foto'}
+                  <Icon name="camera" /> {fotoPreview ? 'Cambiar foto' : 'Subir foto'}
                   <input
                     type="file"
                     accept="image/*"
@@ -179,10 +181,10 @@ function PanelJugadores({ jugadores, store }) {
               fontWeight: 500,
               textAlign: 'center'
             }}>
-              ⚠️ {errorValidacion}
+              <Icon name="alert-triangle" /> {errorValidacion}
             </div>
           )}
-          <button onClick={save} className="btn btn-primary btn-block" disabled={guardando}>{guardando ? '⏳ Guardando…' : 'Guardar'}</button>
+          <button onClick={save} className="btn btn-primary btn-block" disabled={guardando}>{guardando ? <><Icon name="loader" spin /> Guardando…</> : 'Guardar'}</button>
         </Modal>
       )}
     </div>
@@ -338,14 +340,14 @@ function PanelPartidos({ partidos, store }) {
       </div>
       {rivales.length === 0 && (
         <div style={{ background: 'var(--primary-pale)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', marginBottom: 10 }}>
-          💡 Añade primero los equipos del grupo en la pestaña <strong>🏆 Liga</strong> para elegirlos como rival.
+          <Icon name="bulb" /> Añade primero los equipos del grupo en la pestaña <strong>Liga</strong> para elegirlos como rival.
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {nuestros.map((p) => (
           <ResultCard key={p.id} partido={p} showTime actions={<>
-            <button onClick={() => openEdit(p)} aria-label="Editar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>✏️</button>
-            <button onClick={() => del(p.id)} aria-label="Eliminar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>🗑️</button>
+            <button onClick={() => openEdit(p)} aria-label="Editar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="pencil" size={15} /></button>
+            <button onClick={() => del(p.id)} aria-label="Eliminar" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid #b9cbe2', borderRadius: 8, padding: '3px 8px', fontSize: 11, cursor: 'pointer', color: '#c0392b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="trash" size={15} /></button>
           </>} />
         ))}
       </div>
@@ -378,8 +380,8 @@ function PanelPartidos({ partidos, store }) {
           <div className="form-group">
             <label className="label">¿Dónde jugamos?</label>
             <div className="segmented">
-              <button type="button" className={form.enCasa ? 'active' : ''} onClick={() => { set('enCasa', true); if (!form.campo || form.campo !== CLUB.homeGround) set('campo', CLUB.homeGround) }}>🏠 En casa</button>
-              <button type="button" className={!form.enCasa ? 'active' : ''} onClick={() => { set('enCasa', false); if (form.campo === CLUB.homeGround) set('campo', '') }}>🚌 Fuera</button>
+              <button type="button" className={form.enCasa ? 'active' : ''} onClick={() => { set('enCasa', true); if (!form.campo || form.campo !== CLUB.homeGround) set('campo', CLUB.homeGround) }}><span className="with-icon"><Icon name="home" /> En casa</span></button>
+              <button type="button" className={!form.enCasa ? 'active' : ''} onClick={() => { set('enCasa', false); if (form.campo === CLUB.homeGround) set('campo', '') }}><span className="with-icon"><Icon name="bus" /> Fuera</span></button>
             </div>
           </div>
 
@@ -400,9 +402,9 @@ function PanelPartidos({ partidos, store }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {escudoPreview
                 ? <TeamCrest src={escudoPreview} name="Escudo rival" size={52} />
-                : <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--primary-pale)', border: '2px dashed #b9cbe2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🛡️</div>}
+                : <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--primary-pale)', border: '2px dashed #b9cbe2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-light)' }}><Icon name="shield" size={22} /></div>}
               <label style={{ flex: 1, background: 'var(--primary-pale)', border: '1.5px solid #b9cbe2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
-                📷 {escudoPreview ? 'Cambiar escudo' : 'Subir escudo'}
+                <Icon name="camera" /> {escudoPreview ? 'Cambiar escudo' : 'Subir escudo'}
                 <input type="file" accept="image/*" onChange={handleEscudoChange} style={{ display: 'none' }} />
               </label>
             </div>
@@ -427,12 +429,12 @@ function PanelPartidos({ partidos, store }) {
           </div>
           {bloqueoJugado && !fueraDeFecha && (
             <p id="jugado-bloqueo" style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
-              🔒 {bloqueoJugado}
+              <Icon name="lock" /> {bloqueoJugado}
             </p>
           )}
           {auto.jugado && form.jugado && !fueraDeFecha && (
             <p style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
-              ✓ Marcado automáticamente porque el partido ya terminó. Revisa el resultado antes de guardar.
+              <Icon name="check" /> Marcado automáticamente porque el partido ya terminó. Revisa el resultado antes de guardar.
             </p>
           )}
 
@@ -456,13 +458,13 @@ function PanelPartidos({ partidos, store }) {
           )}
           {!isSuperAdmin && (antes?.mvp_finalistas || []).length > 0 && votacionAbierta({ ...antes, jugado: true }) && (
             <p style={{ fontSize: 12, color: 'var(--gris-mid)', margin: '0 0 12px' }}>
-              ⭐ Candidatos al MVP: {(antes.mvp_finalistas || []).map(id => jugadores.find(j => j.id === Number(id))?.nombre).filter(Boolean).join(', ')}
+              <Icon name="star" /> Candidatos al MVP: {(antes.mvp_finalistas || []).map(id => jugadores.find(j => j.id === Number(id))?.nombre).filter(Boolean).join(', ')}
             </p>
           )}
 
-          {errorValidacion && <div className="alert-error">⚠️ {errorValidacion}</div>}
+          {errorValidacion && <div className="alert-error"><Icon name="alert-triangle" /> {errorValidacion}</div>}
           <button onClick={save} className="btn btn-primary btn-block" style={{ fontSize: 16 }} disabled={guardando}>
-            {guardando ? '⏳ Guardando...' : '⚽ Guardar partido'}
+            {guardando ? <><Icon name="loader" spin /> Guardando…</> : <span className="with-icon"><Icon name="ball" /> Guardar partido</span>}
           </button>
         </Modal>
       )}
@@ -580,16 +582,16 @@ function PanelStats({ jugadores, partidos, stats, store }) {
         <>
           <div style={{ background: tieneTimeline ? 'var(--primary-pale)' : 'var(--accent-pale)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: tieneTimeline ? 'var(--primary)' : '#7a5a00', marginBottom: 12, lineHeight: 1.5 }}>
             {tieneTimeline
-              ? <>⏱️ Goles, asistencias, tarjetas y goles encajados se calculan <strong>desde el timeline</strong>. Aquí solo editas las paradas.</>
-              : <>💡 Este partido no tiene timeline: puedes meter las stats a mano, o añadir los eventos desde el detalle del partido para que se calculen solas.</>}
-            <br />🕒 Los <strong>minutos</strong> se calculan siempre con la alineación titular y los cambios.
-            <button onClick={() => store.recalcularPartido(partidoActual.id).then(() => haptics.success?.(), (e) => window.alert(messageFor(e)))} style={{ marginLeft: 6, background: 'white', border: '1px solid currentColor', color: 'inherit', borderRadius: 8, padding: '2px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>↻ Recalcular</button>
+              ? <><Icon name="stopwatch" /> Goles, asistencias, tarjetas y goles encajados se calculan <strong>desde el timeline</strong>. Aquí solo editas las paradas.</>
+              : <><Icon name="bulb" /> Este partido no tiene timeline: puedes meter las stats a mano, o añadir los eventos desde el detalle del partido para que se calculen solas.</>}
+            <br /><Icon name="clock" /> Los <strong>minutos</strong> se calculan siempre con la alineación titular y los cambios.
+            <button onClick={() => store.recalcularPartido(partidoActual.id).then(() => haptics.success?.(), (e) => window.alert(messageFor(e)))} style={{ marginLeft: 6, background: 'white', border: '1px solid currentColor', color: 'inherit', borderRadius: 8, padding: '2px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3, verticalAlign: 'middle' }}><Icon name="refresh" size={13} /> Recalcular</button>
           </div>
           <div className="form-group">
-            <label className="label" htmlFor="mvp-sel">⭐ MVP del partido</label>
+            <label className="label with-icon" htmlFor="mvp-sel"><Icon name="star" /> MVP del partido</label>
             {votacionAbierta(partidoActual) ? (
               <p style={{ fontSize: 13, color: 'var(--gris-mid)', background: 'var(--primary-pale)', borderRadius: 10, padding: '10px 12px' }}>
-                🗳️ Se decide por votación hasta el {mvpCierre(partidoActual.fecha)?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las 23:59. Después se guarda solo el más votado.
+                <Icon name="list-check" /> Se decide por votación hasta el {mvpCierre(partidoActual.fecha)?.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las 23:59. Después se guarda solo el más votado.
               </p>
             ) : (
             <>
@@ -618,12 +620,15 @@ function PanelStats({ jugadores, partidos, stats, store }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{j.nombre} {s.titular && <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>· TITULAR</span>}</div>
                     <div style={{ fontSize: 11, color: 'var(--gris-mid)' }}>
-                      🕒{s.minutos || 0}' ⚽{s.goles} 🅰️{s.asistencias} 🟨{s.tarjetas_amarillas} 🟥{s.tarjetas_rojas}
-                      {j.posicion === 'Portero' ? ` · 🧤${s.paradas || 0} 🥅${s.goles_encajados || 0}` : ''}
+                      <span className="stat-inline">
+                        {[['minutos', `${s.minutos || 0}'`], ['goles', s.goles], ['asistencias', s.asistencias], ['tarjetas_amarillas', s.tarjetas_amarillas], ['tarjetas_rojas', s.tarjetas_rojas],
+                          ...(j.posicion === 'Portero' ? [['paradas', s.paradas || 0], ['goles_encajados', s.goles_encajados || 0]] : [])]
+                          .map(([k, v]) => <span key={k}><StatIcon stat={k} size={12} />{v}</span>)}
+                      </span>
                     </div>
                   </div>
                   <button onClick={() => openEdit(s)} style={{ background: 'none', border: '1px solid #b9cbe2', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: 'var(--primary)' }}>Editar</button>
-                  <button onClick={() => del(s.jugador_id)} aria-label="Eliminar" style={{ background: 'none', border: '1px solid #fcc', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#c0392b' }}>✕</button>
+                  <button onClick={() => del(s.jugador_id)} aria-label="Eliminar" style={{ background: 'none', border: '1px solid #fcc', borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer', color: '#c0392b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={14} /></button>
                 </div>
               )
             })}
@@ -643,19 +648,19 @@ function PanelStats({ jugadores, partidos, stats, store }) {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             {[
-              ['goles', '⚽ Goles', tieneTimeline, 99],
-              ['asistencias', '🅰️ Asistencias', tieneTimeline, 99],
-              ['tarjetas_amarillas', '🟨 Amarillas', tieneTimeline, 2],
-              ['tarjetas_rojas', '🟥 Rojas', tieneTimeline, 1],
-              ...(esPortero ? [['paradas', '🧤 Paradas', false, 99], ['goles_encajados', '🥅 Encajados', tieneTimeline, 99]] : []),
+              ['goles', 'Goles', tieneTimeline, 99],
+              ['asistencias', 'Asistencias', tieneTimeline, 99],
+              ['tarjetas_amarillas', 'Amarillas', tieneTimeline, 2],
+              ['tarjetas_rojas', 'Rojas', tieneTimeline, 1],
+              ...(esPortero ? [['paradas', 'Paradas', false, 99], ['goles_encajados', 'Encajados', tieneTimeline, 99]] : []),
             ].map(([k, l, locked, max]) => (
               <div key={k} style={{ textAlign: 'center' }}>
-                <div className="label" style={{ textAlign: 'center', marginBottom: 8 }}>{l}{locked ? ' 🔒' : ''}</div>
+                <div className="label with-icon" style={{ justifyContent: 'center', display: 'flex', marginBottom: 8, gap: 4 }}><StatIcon stat={k} size={14} />{l}{locked && <Icon name="lock" size={12} title="Se calcula desde el timeline" />}</div>
                 <Stepper value={Number(form[k]) || 0} onChange={v => set(k, v)} disabled={locked} max={max} />
               </div>
             ))}
           </div>
-          {errorValidacion && <div className="alert-error">⚠️ {errorValidacion}</div>}
+          {errorValidacion && <div className="alert-error"><Icon name="alert-triangle" /> {errorValidacion}</div>}
           <button onClick={save} className="btn btn-primary btn-block">Guardar</button>
         </Modal>
       )}
@@ -712,12 +717,12 @@ function PanelTemporada({ store }) {
 
       {!isSuperAdmin ? (
         <div style={{ background: '#f3f6fb', borderRadius: 12, padding: '1rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: 20, marginBottom: 6 }}>🔐</div>
+          <Icon name="lock" size={22} style={{ color: 'var(--gris-mid)', marginBottom: 6 }} />
           <div style={{ fontSize: 13, color: 'var(--gris-mid)' }}>Solo el superadmin puede cerrar la temporada</div>
         </div>
       ) : !showForm ? (
         <button onClick={() => setShowForm(true)} className="btn btn-ghost btn-block" style={{ marginBottom: '1.5rem' }}>
-          🔚 Cerrar temporada y empezar nueva
+          <span className="with-icon"><Icon name="archive" /> Cerrar temporada y empezar nueva</span>
         </button>
       ) : (
         <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid var(--primary)' }}>
@@ -734,24 +739,24 @@ function PanelTemporada({ store }) {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setShowForm(false)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
-                <button onClick={() => setConfirmando(true)} className="btn btn-primary" style={{ flex: 1 }}>Continuar →</button>
+                <button onClick={() => setConfirmando(true)} className="btn btn-primary" style={{ flex: 1 }}><span className="with-icon">Continuar <Icon name="arrow-right" /></span></button>
               </div>
             </>
           ) : (
             <>
               <div style={{ background: '#fde8e8', border: '1px solid #f5c0c0', borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: '#c0392b' }}>
-                ⚠️ <strong>Atención:</strong> Al cerrar <strong>"{temporadaActiva?.nombre}"</strong>, los partidos, estadísticas y clasificación quedarán archivados. Los jugadores se mantienen. Esta acción no se puede deshacer.
+                <Icon name="alert-triangle" /> <strong>Atención:</strong> Al cerrar <strong>"{temporadaActiva?.nombre}"</strong>, los partidos, estadísticas y clasificación quedarán archivados. Los jugadores se mantienen. Esta acción no se puede deshacer.
               </div>
               <div className="form-group">
                 <label className="label">Escribe <strong>CERRAR</strong> para confirmar</label>
                 <input className="input" value={pwdSuper} autoCapitalize="characters"
                   onChange={e => { setPwdSuper(e.target.value); setErrorPwd('') }} placeholder="CERRAR" />
-                {errorPwd && <div style={{ color: '#c0392b', fontSize: 12, marginTop: 4 }}>⚠️ {errorPwd}</div>}
+                {errorPwd && <div style={{ color: '#c0392b', fontSize: 12, marginTop: 4 }}><Icon name="alert-triangle" /> {errorPwd}</div>}
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setConfirmando(false); setPwdSuper(''); setErrorPwd('') }} className="btn btn-ghost" style={{ flex: 1 }}>Atrás</button>
                 <button onClick={verificarYCerrar} disabled={cerrando || !pwdSuper} style={{ flex: 1, background: '#c0392b', color: 'white', border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 15, cursor: 'pointer', opacity: (cerrando || !pwdSuper) ? 0.5 : 1 }}>
-                  {cerrando ? 'Cerrando...' : '🔚 Confirmar y cerrar'}
+                  {cerrando ? 'Cerrando...' : <span className="with-icon"><Icon name="archive" /> Confirmar y cerrar</span>}
                 </button>
               </div>
             </>
@@ -764,7 +769,7 @@ function PanelTemporada({ store }) {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {temporadas.filter(t => !t.activa).map((t, i, arr) => (
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < arr.length - 1 ? '1px solid #e8eff8' : 'none' }}>
-            <div style={{ fontSize: 24 }}>🏆</div>
+            <Icon name="trophy" size={24} style={{ color: 'var(--primary)' }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{t.nombre}</div>
               <div style={{ fontSize: 12, color: 'var(--gris-mid)' }}>Temporada {t.año} · Archivada</div>
@@ -795,7 +800,7 @@ function PanelLog({ store, jugadores }) {
   // The database only returns rows to superadmins (RLS); this is just the message.
   if (!isSuperAdmin) return (
     <div className="card" style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🔐</div>
+      <Icon name="lock" size={40} strokeWidth={1.5} style={{ color: 'var(--primary-light)', marginBottom: 12 }} />
       <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', marginBottom: 6 }}>Área restringida</div>
       <div style={{ fontSize: 13, color: 'var(--gris-mid)', marginBottom: 20 }}>Solo el superadministrador puede ver el registro de actividad</div>
     </div>
@@ -881,7 +886,7 @@ function PanelLog({ store, jugadores }) {
         {(filtroJugador || filtroFecha) && (
           <button onClick={() => { setFiltroJugador(''); setFiltroFecha('') }}
             style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-            ✕ Limpiar filtros
+            <span className="with-icon"><Icon name="x" /> Limpiar filtros</span>
           </button>
         )}
       </div>
@@ -975,12 +980,12 @@ function PanelLog({ store, jugadores }) {
 
 // ---- Main Admin ----
 const adminTabs = [
-  { key: 'stats', label: '📊 Stats' },
-  { key: 'partidos', label: '⚽ Partidos' },
-  { key: 'jugadores', label: '👕 Plantilla' },
-  { key: 'liga', label: '🏆 Liga' },
-  { key: 'temporada', label: '📅 Temporada' },
-  { key: 'log', label: '📋 Actividad' },
+  { key: 'stats', label: 'Stats', icon: 'chart-bar' },
+  { key: 'partidos', label: 'Partidos', icon: 'ball' },
+  { key: 'jugadores', label: 'Plantilla', icon: 'shirt' },
+  { key: 'liga', label: 'Liga', icon: 'trophy' },
+  { key: 'temporada', label: 'Temporada', icon: 'calendar' },
+  { key: 'log', label: 'Actividad', icon: 'list-check' },
 ]
 
 export default function Admin() {
@@ -1004,12 +1009,12 @@ export default function Admin() {
       <div className="page anim-fade">
         {/* Header admin */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' }}>
-          <div style={{ background: 'var(--primary)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>⚙️</div>
+          <div style={{ background: 'var(--primary)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}><Icon name="settings" size={20} /></div>
           <div style={{ flex: 1 }}>
             <h1 style={{ fontFamily: 'Bebas Neue', fontSize: 26, color: 'var(--primary)', lineHeight: 1 }}>Panel de gestión</h1>
             <div style={{ fontSize: 12, color: 'var(--gris-mid)' }}>{CLUB.name} · {COMPETITION_LABEL} · {COMPETITION.season}</div>
             <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: SUPABASE_READY ? '#1f9d55' : '#b7791f' }}>
-              {SUPABASE_READY ? `● Conectado a Supabase · rol ${role}` : '● Modo local: los datos solo se guardan en este navegador (faltan las variables de Supabase)'}
+              <span className="with-icon" style={{ gap: 3 }}><Icon name="point" />{SUPABASE_READY ? `Conectado a Supabase · rol ${role}` : 'Modo local: los datos solo se guardan en este navegador (faltan las variables de Supabase)'}</span>
             </div>
           </div>
           <button
@@ -1023,7 +1028,7 @@ export default function Admin() {
         <div style={{ display: 'flex', gap: 6, marginBottom: '1.25rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {adminTabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '8px 16px', borderRadius: 20, whiteSpace: 'nowrap', border: '1.5px solid', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0, background: tab === t.key ? 'var(--primary)' : 'white', color: tab === t.key ? 'white' : 'var(--primary-mid)', borderColor: tab === t.key ? 'var(--primary)' : '#b9cbe2' }}>
-              {t.label}
+              <span className="with-icon"><Icon name={t.icon} /> {t.label}</span>
             </button>
           ))}
         </div>
