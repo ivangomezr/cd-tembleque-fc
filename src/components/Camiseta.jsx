@@ -1,12 +1,12 @@
 import { useId } from 'react'
-import { KITS, DEFAULT_KIT } from '../config/club'
+import { KITS, GK_KITS, DEFAULT_KIT } from '../config/club'
 
 /** Shirt silhouette shared by the body fill and the pattern clip. */
 const BODY = 'M25 10 L8 30 L22 38 L25 34 L25 82 L75 82 L75 34 L78 38 L92 30 L75 10 L64 14 Q50 24 36 14 Z'
 
-/** Small SVG shirt only (no name), used in the lineup and in the kit picker. */
-export function ShirtSvg({ kit = DEFAULT_KIT, dorsal = '', size = 60, highlight = false }) {
-  const k = KITS[kit] || KITS[DEFAULT_KIT]
+/** Small SVG shirt only (no name), used in the lineup and in the kit picker. `portero`: goalkeeper version of the kit. */
+export function ShirtSvg({ kit = DEFAULT_KIT, dorsal = '', size = 60, highlight = false, portero = false }) {
+  const k = (portero ? GK_KITS[kit] || GK_KITS[DEFAULT_KIT] : KITS[kit]) || KITS[DEFAULT_KIT]
   const uid = useId().replace(/:/g, '')
   const grad = `g-${uid}`
   const clip = `c-${uid}`
@@ -45,12 +45,12 @@ export function ShirtSvg({ kit = DEFAULT_KIT, dorsal = '', size = 60, highlight 
 }
 
 /** Shirt with the player's number and name, as drawn on the pitch. */
-export default function Camiseta({ nombre, dorsal, pequeña = false, destacado = false, badge = null, kit = DEFAULT_KIT }) {
+export default function Camiseta({ nombre, dorsal, pequeña = false, destacado = false, badge = null, kit = DEFAULT_KIT, portero = false }) {
   const size = pequeña ? 50 : 60
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: size + 8 }}>
       <div style={{ position: 'relative', width: size, height: size * 0.85 }}>
-        <ShirtSvg kit={kit} dorsal={dorsal ?? '?'} size={size} highlight={destacado} />
+        <ShirtSvg kit={kit} dorsal={dorsal ?? '?'} size={size} highlight={destacado} portero={portero} />
         {badge && (
           <span style={{ position: 'absolute', top: -6, right: -10, zIndex: 2 }}>{badge}</span>
         )}

@@ -59,6 +59,33 @@ export const KITS = {
 }
 export const DEFAULT_KIT = 'local'
 
+/**
+ * Goalkeeper shirt that goes with each kit (same key as KITS), used for the
+ * goalkeeper in the starting line-up.
+ *  - Local: yellow body (#FAC614); the white details become the home blue.
+ *  - Visitante: the pink becomes green (#A2BE7D), the blue stays; the pink
+ *    tones of the blend and of the number outline follow the green.
+ */
+export const GK_KITS = {
+  local: {
+    label: 'Portero local',
+    body: ['#FAC614', '#FAC614'],
+    trim: KITS.local.body[0],
+    number: KITS.local.body[0],
+    numberStroke: '#01153A',
+    pattern: 'slashes',
+  },
+  visitante: {
+    label: 'Portero visitante',
+    body: ['#A2BE7D', '#A2BE7D', '#7197AB', '#3f6fd8'],
+    bodyDirection: 'horizontal',
+    trim: '#ffffff',
+    number: '#ffffff',
+    numberStroke: '#4f6b33',
+    pattern: null,
+  },
+}
+
 /** Prefix for every localStorage key (avoids clashes with other apps on localhost). */
 export const STORAGE_PREFIX = 'cdt_'
 
