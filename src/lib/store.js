@@ -232,7 +232,7 @@ export const store = {
     patch = validarTemporada(patch, { numEquipos: zonas ? _equipos.length : null })
     await db.update('temporadas', { id }, patch)
     if (_temporadaActiva?.id === id) _temporadaActiva = { ..._temporadaActiva, ...patch }
-    await log('✏️ Editó', 'Temporada', _temporadaActiva?.nombre)
+    await log('Editó', 'Temporada', _temporadaActiva?.nombre)
     notify()
   },
 
@@ -254,7 +254,7 @@ export const store = {
     _equipos = []
     _partidosLiga = []
     await store.ensureOwnTeam()
-    await log('📅 Nueva temporada', 'Temporada', nombreNueva)
+    await log('Nueva temporada', 'Temporada', nombreNueva)
     notify()
     return nueva
   },
@@ -293,7 +293,7 @@ export const store = {
     j = validarJugador(j, { jugadores: _jugadores, local: !USE_SUPABASE })
     const row = await db.insert('jugadores', { nombre: j.nombre, posicion: j.posicion, dorsal: j.dorsal ?? null, foto_url: j.foto_url || null, estado: 'disponible' })
     _jugadores = [..._jugadores, row]
-    await log('➕ Añadió', 'Jugador', j.nombre)
+    await log('Añadió', 'Jugador', j.nombre)
     notify()
   },
   async updateJugador(id, data) {
@@ -315,7 +315,7 @@ export const store = {
     }
     _privado.set(id, estado_desc)
     _jugadores = _jugadores.map((j) => (j.id === id ? { ...j, ...patch, estado_desc } : j))
-    await log('✏️ Editó', 'Jugador', data.nombre)
+    await log('Editó', 'Jugador', data.nombre)
     notify()
   },
   async deleteJugador(id) {
@@ -334,7 +334,7 @@ export const store = {
     _partidos = _partidos.map((p) => ((p.convocados || []).includes(id) ? { ...p, convocados: p.convocados.filter((x) => x !== id) } : p))
     _jugadores = _jugadores.filter((x) => x.id !== id)
     _stats = _stats.filter((s) => s.jugador_id !== id)
-    await log('🗑️ Eliminó', 'Jugador', j?.nombre || String(id))
+    await log('Eliminó', 'Jugador', j?.nombre || String(id))
     notify()
   },
   async subirFotoJugador(_jugador_id, archivo) {
@@ -363,7 +363,7 @@ export const store = {
       temporada_id: tid(),
     })
     _partidos = [..._partidos, { ...row, convocados: row.convocados || [] }]
-    await log('➕ Añadió', 'Partido', `J${p.jornada} ${p.local} - ${p.visitante}`)
+    await log('Añadió', 'Partido', `J${p.jornada} ${p.local} - ${p.visitante}`)
     notify()
     return row
   },
@@ -395,7 +395,7 @@ export const store = {
     if (patch.jugado && !before.jugado) exigirFinalistas({ ...before, ...patch })
     await db.update('partidos', { id }, patch)
     _partidos = _partidos.map((p) => (p.id === id ? { ...p, ...patch } : p))
-    await log('✏️ Editó', 'Partido', `J${patch.jornada ?? before?.jornada} ${patch.local ?? before?.local} - ${patch.visitante ?? before?.visitante}`)
+    await log('Editó', 'Partido', `J${patch.jornada ?? before?.jornada} ${patch.local ?? before?.local} - ${patch.visitante ?? before?.visitante}`)
     // Minutes are (re)computed every time a match is (or stays) played
     if (patch.jugado ?? before?.jugado) await store.recalcularPartido(id)
     notify()
@@ -433,7 +433,7 @@ export const store = {
     }
     _partidos = _partidos.filter((x) => x.id !== id)
     _stats = _stats.filter((s) => s.partido_id !== id)
-    await log('🗑️ Eliminó', 'Partido', `J${p?.jornada} ${p?.local} - ${p?.visitante}`)
+    await log('Eliminó', 'Partido', `J${p?.jornada} ${p?.local} - ${p?.visitante}`)
     notify()
   },
 
@@ -465,7 +465,7 @@ export const store = {
       temporada_id: tid(),
     })
     await store.recalcularPartido(ev.partido_id)
-    await log('⏱️ Evento', 'Timeline', `${ev.tipo} ${ev.minuto}'`)
+    await log('Evento', 'Timeline', `${ev.tipo} ${ev.minuto}'`)
     notify()
     return row
   },
@@ -574,7 +574,7 @@ export const store = {
     mergeStats(saved)
     const j = _jugadores.find((x) => x.id === data.jugador_id)
     const p = _partidos.find((x) => x.id === data.partido_id)
-    await log('📊 Stats', 'Estadísticas', `${j?.nombre} en J${p?.jornada}`)
+    await log('Stats', 'Estadísticas', `${j?.nombre} en J${p?.jornada}`)
     notify()
   },
   async deleteStat(jugador_id, partido_id) {
@@ -594,7 +594,7 @@ export const store = {
     await db.upsert('alineaciones', [{ partido_id, formacion, jugadores: jugadoresAlin, temporada_id: tid() }], ['partido_id'])
     if (_partidos.find((p) => p.id === partido_id)?.jugado) await store.recalcularPartido(partido_id)
     const p = _partidos.find((x) => x.id === partido_id)
-    await log('👕 Alineación', 'Alineación', `J${p?.jornada} — ${formacion}`)
+    await log('Alineación', 'Alineación', `J${p?.jornada} — ${formacion}`)
     notify()
   },
 
@@ -620,7 +620,7 @@ export const store = {
       temporada_id: tid(),
     })
     _equipos = sortEquipos([..._equipos, row])
-    await log('➕ Añadió', 'Equipo', data.nombre)
+    await log('Añadió', 'Equipo', data.nombre)
     notify()
   },
   async updateEquipo(id, data) {
@@ -642,7 +642,7 @@ export const store = {
         _partidos = _partidos.map((x) => (x.id === p.id ? { ...x, ...upd } : x))
       }
     }
-    await log('✏️ Editó', 'Equipo', patch.nombre)
+    await log('Editó', 'Equipo', patch.nombre)
     notify()
   },
   async deleteEquipo(id) {
@@ -654,7 +654,7 @@ export const store = {
     }
     _equipos = _equipos.filter((x) => x.id !== id)
     _partidosLiga = _partidosLiga.filter((m) => m.local_id !== id && m.visitante_id !== id)
-    await log('🗑️ Eliminó', 'Equipo', e?.nombre)
+    await log('Eliminó', 'Equipo', e?.nombre)
     notify()
   },
   async uploadEscudoEquipo(archivo) {
@@ -673,7 +673,7 @@ export const store = {
     const patch = validarPartidoLiga(m, { partidosLiga: _partidosLiga, partidos: _partidos, equipos: _equipos, temporada: _temporadaActiva, id })
     await db.update('partidos_liga', { id }, patch)
     _partidosLiga = _partidosLiga.map((x) => (x.id === id ? { ...x, ...patch } : x))
-    await log('🏆 Resultado', 'Liga', `J${patch.jornada}`)
+    await log('Resultado', 'Liga', `J${patch.jornada}`)
     notify()
   },
   async deletePartidoLiga(id) {

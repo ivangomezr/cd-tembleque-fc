@@ -4,19 +4,21 @@ import { playerTotals, fmtMin } from '../lib/playerTotals'
 import { COMPETITION } from '../config/club'
 import PlayerAvatar from '../components/PlayerAvatar'
 import AppLink from '../components/AppLink'
+import Icon from '../components/Icon'
+import { StatIcon } from '../components/EventIcons'
 
 const Avatar = ({ jugador }) => <PlayerAvatar jugador={jugador} size={32} />
 
 const tabs = [
-  { key: 'goles', label: '⚽ Goles', color: 'var(--primary)' },
-  { key: 'asistencias', label: '🅰️ Asistencias', color: 'var(--primary)' },
-  { key: 'minutos', label: '🕒 Minutos', color: 'var(--navy)', fmt: fmtMin },
-  { key: 'partidos', label: '🎮 Partidos', color: 'var(--primary-mid)' },
-  { key: 'titularidades', label: '👕 Titular', color: 'var(--primary-mid)' },
-  { key: 'tarjetas_amarillas', label: '🟨 Amarillas', color: '#b8860b' },
-  { key: 'tarjetas_rojas', label: '🟥 Rojas', color: '#c0392b' },
-  { key: 'paradas', label: '🧤 Paradas', color: 'var(--primary)', gk: true },
-  { key: 'goles_encajados', label: '🥅 Encajados', color: '#c0392b', gk: true },
+  { key: 'goles', label: 'Goles', color: 'var(--primary)' },
+  { key: 'asistencias', label: 'Asistencias', color: 'var(--primary)' },
+  { key: 'minutos', label: 'Minutos', color: 'var(--navy)', fmt: fmtMin },
+  { key: 'partidos', label: 'Partidos', color: 'var(--primary-mid)' },
+  { key: 'titularidades', label: 'Titular', color: 'var(--primary-mid)' },
+  { key: 'tarjetas_amarillas', label: 'Amarillas', color: '#b8860b' },
+  { key: 'tarjetas_rojas', label: 'Rojas', color: '#c0392b' },
+  { key: 'paradas', label: 'Paradas', color: 'var(--primary)', gk: true },
+  { key: 'goles_encajados', label: 'Encajados', color: '#c0392b', gk: true },
 ]
 
 export default function Estadisticas() {
@@ -43,13 +45,13 @@ export default function Estadisticas() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: '1rem', scrollbarWidth: 'none' }}>
-        {tabs.map((t) => <button key={t.key} className={`chip ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>{t.label}</button>)}
+        {tabs.map((t) => <button key={t.key} className={`chip ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}><span className="with-icon"><StatIcon stat={t.key} size={15} />{t.label}</span></button>)}
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '1.25rem' }}>
         {sorted.length === 0 && <div className="empty">Sin datos aún</div>}
         {sorted.map((j, i) => (
-          <AppLink key={j.id} to={`/jugadores/${j.id}`} className="stat-row" aria-label={`${j.nombre}: ${cur.fmt ? cur.fmt(j[tab]) : j[tab]} ${cur.label.replace(/^\S+\s/, '').toLowerCase()}. Ver ficha`}
+          <AppLink key={j.id} to={`/jugadores/${j.id}`} className="stat-row" aria-label={`${j.nombre}: ${cur.fmt ? cur.fmt(j[tab]) : j[tab]} ${cur.label.toLowerCase()}. Ver ficha`}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #eef2f8' : 'none', background: i === 0 ? 'var(--primary-pale)' : 'white', color: 'inherit', textDecoration: 'none' }}>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 20, minWidth: 24, textAlign: 'center', color: ['#c8a800', '#909090', '#a06030', '#b9cbe2'][Math.min(i, 3)] }}>{i + 1}</div>
             <Avatar jugador={j} />
@@ -62,7 +64,7 @@ export default function Estadisticas() {
             </div>
             <div className="bar-wrap" style={{ maxWidth: 70 }}><div className="bar-fill" style={{ width: `${Math.round((j[tab] / max) * 100)}%`, background: cur.color }} /></div>
             <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, color: cur.color, minWidth: 34, textAlign: 'right' }}>{cur.fmt ? cur.fmt(j[tab]) : j[tab]}</div>
-            <span aria-hidden="true" style={{ color: 'var(--gris-light)', fontSize: 18 }}>›</span>
+            <Icon name="chevron-right" size={18} style={{ color: 'var(--gris-light)' }} />
           </AppLink>
         ))}
       </div>
@@ -72,7 +74,10 @@ export default function Estadisticas() {
           <thead>
             <tr>
               <th>Jugador</th>
-              {['PJ', 'Tit', 'Min', '⚽', '🅰️', '🟨', '🟥'].map((h) => <th key={h} style={{ textAlign: 'center' }}>{h}</th>)}
+              {['PJ', 'Tit', 'Min'].map((h) => <th key={h} style={{ textAlign: 'center' }}>{h}</th>)}
+              {[['goles', 'Goles'], ['asistencias', 'Asistencias'], ['tarjetas_amarillas', 'Amarillas'], ['tarjetas_rojas', 'Rojas']].map(([k, t]) => (
+                <th key={k} style={{ textAlign: 'center' }}><StatIcon stat={k} size={15} title={t} /></th>
+              ))}
             </tr>
           </thead>
           <tbody>

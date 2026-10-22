@@ -178,7 +178,7 @@ export function validarPartidoLiga(m, { partidosLiga = [], partidos = [], equipo
   if (local_id === visitante_id) fail('Un equipo no puede jugar contra sí mismo.')
   const L = equipos.find((e) => e.id === local_id), V = equipos.find((e) => e.id === visitante_id)
   if (!L || !V) fail('Uno de los equipos ya no existe. Recarga la página.')
-  if (L.es_propio || V.es_propio) fail('Los partidos del club se registran en ⚽ Partidos.')
+  if (L.es_propio || V.es_propio) fail('Los partidos del club se registran en Admin › Partidos.')
   const jornada = entero(m.jornada)
   if (!enRango(jornada, ...LIMITS.jornada)) fail('La jornada debe estar entre 1 y 99.', 'jornada')
   for (const t of [L, V]) {

@@ -5,6 +5,7 @@ import { useStore } from '../hooks/useStore'
 import { zoneFor, ZONES } from '../lib/standings'
 import { CLUB, COMPETITION } from '../config/club'
 import TeamCrest from '../components/TeamCrest'
+import Icon from '../components/Icon'
 
 const SCOPES = [
   { key: 'total', label: 'Total' },
@@ -27,13 +28,13 @@ export default function Clasificacion() {
       <Hero jornadaActual={jornadaActual} totalJornadas={totalJornadas} table={table} />
 
       <div className="segmented" style={{ marginBottom: '1rem' }}>
-        <button className={view === 'tabla' ? 'active' : ''} onClick={() => setView('tabla')}>🏆 Clasificación</button>
-        <button className={view === 'jornadas' ? 'active' : ''} onClick={() => setView('jornadas')}>📅 Jornadas</button>
+        <button className={view === 'tabla' ? 'active' : ''} onClick={() => setView('tabla')}><span className="with-icon"><Icon name="trophy" /> Clasificación</span></button>
+        <button className={view === 'jornadas' ? 'active' : ''} onClick={() => setView('jornadas')}><span className="with-icon"><Icon name="calendar" /> Jornadas</span></button>
       </div>
 
       {!loading && equipos.length < 2 ? (
         <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-          <div style={{ fontSize: 56, marginBottom: '1rem' }}>🏆</div>
+          <Icon name="trophy" size={56} strokeWidth={1.5} style={{ color: 'var(--primary-light)', opacity: 0.7, display: 'block', margin: '0 auto 1rem' }} />
           <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, color: 'var(--primary)', marginBottom: 8 }}>La liga aún no está configurada</div>
           <div style={{ color: 'var(--gris-mid)', fontSize: 14 }}>Añade los equipos del {COMPETITION.group} desde Panel Admin › Liga.</div>
         </div>

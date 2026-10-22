@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Sheet from './Sheet'
 import { useAuth } from '../hooks/useAuth'
 import { CLUB } from '../config/club'
+import Icon from './Icon'
 
 /**
  * Login with Supabase Auth.
@@ -40,8 +41,8 @@ export default function LoginSheet({ jugadores, onClose, onSuccess }) {
 
   const eye = (
     <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Ocultar' : 'Mostrar'}
-      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 20, color: 'var(--gris-mid)', padding: 4 }}>
-      {show ? '🙈' : '👁️'}
+      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--gris-mid)', padding: 4, display: 'flex' }}>
+      <Icon name={show ? 'eye-off' : 'eye'} size={20} />
     </button>
   )
 
@@ -52,8 +53,8 @@ export default function LoginSheet({ jugadores, onClose, onSuccess }) {
       ) : (
         <>
           <div className="segmented" style={{ marginBottom: 16 }}>
-            <button type="button" className={modo === 'jugador' ? 'active' : ''} onClick={() => { setModo('jugador'); setError('') }}>👕 Jugador</button>
-            <button type="button" className={modo === 'admin' ? 'active' : ''} onClick={() => { setModo('admin'); setError('') }}>⚙️ Administración</button>
+            <button type="button" className={modo === 'jugador' ? 'active' : ''} onClick={() => { setModo('jugador'); setError('') }}><span className="with-icon"><Icon name="shirt" /> Jugador</span></button>
+            <button type="button" className={modo === 'admin' ? 'active' : ''} onClick={() => { setModo('admin'); setError('') }}><span className="with-icon"><Icon name="settings" /> Administración</span></button>
           </div>
 
           {error && <div className="alert-error" role="alert">{error}</div>}

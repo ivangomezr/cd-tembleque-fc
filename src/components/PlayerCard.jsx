@@ -1,5 +1,6 @@
 import { ShirtSvg } from './Camiseta'
 import { ESTADOS, POS_CORTA, splitName } from '../lib/players'
+import Icon from './Icon'
 
 /**
  * Squad card: photo (or the club shirt with the number when there is none) on a
@@ -26,7 +27,7 @@ export default function PlayerCard({ jugador: j, href, onOpen, priority = false 
       <div className="player-card__shade" aria-hidden="true" />
       <div className="player-card__top" aria-hidden="true">
         {j.posicion && <span className="player-card__pos">{POS_CORTA[j.posicion] || j.posicion}</span>}
-        {estado?.icono && <span className="player-card__status" style={{ color: estado.color }} title={estado.label}>{estado.icono}</span>}
+        {estado?.icono && <span className="player-card__status" style={{ color: estado.color }} title={estado.label}><Icon name={estado.icono} /></span>}
       </div>
       <div className="player-card__info" aria-hidden="true">
         <div className="player-card__names">

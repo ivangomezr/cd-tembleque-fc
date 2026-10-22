@@ -1,4 +1,5 @@
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import Icon from './Icon'
 
 export function PullIndicator({ onRefresh }) {
   const { isRefreshing, pullDistance } = usePullToRefresh(onRefresh)
@@ -38,8 +39,8 @@ export function PullIndicator({ onRefresh }) {
             fontSize: 14,
             transform: `rotate(${progress * 180}deg)`,
             transition: 'transform 0.1s',
-            color: 'var(--primary)',
-          }}>↓</div>
+            color: 'var(--primary)', display: 'flex',
+          }}><Icon name="arrow-down" size={16} /></div>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { messageFor } from '../lib/dbErrors'
+import Icon from './Icon'
 
 /**
  * Shows any unhandled async error (e.g. a failed Supabase write) instead of
@@ -30,7 +31,7 @@ export default function ErrorToast() {
       maxWidth: 656, margin: '0 auto', background: 'var(--danger)', color: 'white', borderRadius: 12,
       padding: '10px 14px', fontSize: 13, boxShadow: '0 6px 24px rgba(0,0,0,.25)', cursor: 'pointer',
     }}>
-      ⚠️ {msg}
+      <Icon name="alert-triangle" style={{ marginRight: 6 }} />{msg}
     </div>
   )
 }

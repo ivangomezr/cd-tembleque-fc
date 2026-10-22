@@ -6,13 +6,14 @@ import { messageFor } from '../lib/dbErrors'
 import { CLUB } from '../config/club'
 import { haptics } from '../lib/haptics'
 import { GoalIcon, CardIcon } from './EventIcons'
+import Icon from './Icon'
 
 function EventIcon({ tipo, size = 16 }) {
   if (tipo === 'amarilla') return <CardIcon size={size} />
   if (tipo === 'roja') return <CardIcon color="red" size={size} />
   if (tipo === 'segunda_amarilla') return <CardIcon color="red" second size={size} />
-  if (tipo === 'cambio') return <span style={{ fontSize: size - 1 }}>🔄</span>
-  if (tipo === 'penalti_fallado') return <span style={{ fontSize: size - 2 }}>❌</span>
+  if (tipo === 'cambio') return <Icon name="arrows-exchange" size={size} style={{ color: 'var(--primary)' }} />
+  if (tipo === 'penalti_fallado') return <Icon name="circle-x" size={size} style={{ color: '#d63a2f' }} />
   if (tipo === 'gol_penalti') return <GoalIcon variant="penalty" size={size} />
   if (tipo === 'gol_propia') return <GoalIcon variant="own" size={size} />
   return <GoalIcon size={size} />
@@ -56,7 +57,7 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
         return { main: ours ? name(e.jugador_id) : e.nombre_rival || rival, sub: 'Penalti fallado' }
       case 'cambio':
         return ours
-          ? { main: <span style={{ color: '#1f9d55' }}>↑ {name(e.jugador_id)}</span>, sub: <span style={{ color: '#c0392b' }}>↓ {name(e.jugador2_id)}</span> }
+          ? { main: <span className="with-icon" style={{ color: '#1f9d55', gap: 2 }}><Icon name="arrow-up" />{name(e.jugador_id)}</span>, sub: <span className="with-icon" style={{ color: '#c0392b', gap: 2 }}><Icon name="arrow-down" />{name(e.jugador2_id)}</span> }
           : { main: e.nombre_rival || 'Cambio', sub: null }
       default:
         return { main: ours ? name(e.jugador_id) : e.nombre_rival || rival, sub: EVENT_TYPES[e.tipo]?.label }
@@ -114,7 +115,7 @@ export default function MatchTimeline({ partido, eventos, jugadores, rival, edit
     <div>
       {mismatch && (
         <div style={{ background: 'var(--accent-pale)', color: '#7a5a00', borderRadius: 10, padding: '8px 12px', fontSize: 12, marginBottom: 10 }}>
-          ⚠️ Los goles del timeline ({fmtScore(ft)}) no coinciden con el marcador del partido.
+          <Icon name="alert-triangle" /> Los goles del timeline ({fmtScore(ft)}) no coinciden con el marcador del partido.
         </div>
       )}
       {eventos.length === 0 ? (
@@ -167,7 +168,7 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
   const isSub = ours && form.tipo === 'cambio'
   const needsRivalName = !ours ? form.tipo !== 'gol_propia' : form.tipo === 'gol_propia'
 
-  const playerLabel = isSub ? '↑ Entra' : form.tipo.startsWith('gol') && form.tipo !== 'gol_propia' ? 'Goleador' : form.tipo === 'gol_propia' ? 'Jugador nuestro que marca en propia' : form.tipo === 'penalti_fallado' ? 'Lanzador' : 'Jugador'
+  const playerLabel = isSub ? 'Entra' : form.tipo.startsWith('gol') && form.tipo !== 'gol_propia' ? 'Goleador' : form.tipo === 'gol_propia' ? 'Jugador nuestro que marca en propia' : form.tipo === 'penalti_fallado' ? 'Lanzador' : 'Jugador'
 
   const { dur, max: maxMinuto } = limitesMinuto(partido, store.getTemporadaActiva?.())
   // Half-time substitutions are stored as the first minute of the second half (46')
@@ -279,13 +280,13 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
           <input className="input" type="number" inputMode="numeric" min="1" max={maxMinuto} step="1" disabled={enDescanso} value={form.minuto} onChange={(e) => set('minuto', e.target.value)} placeholder="Ej: 37" />
         </div>
         <div className="form-group">
-          <label className="label">Añadido <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(45+2 → 2)</span></label>
+          <label className="label">Añadido <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--gris-mid)' }}>(en 45+2, escribe 2)</span></label>
           <input className="input" type="number" inputMode="numeric" min="0" max={LIMITS.extraMax} step="1" disabled={enDescanso} value={form.minuto_extra} onChange={(e) => set('minuto_extra', e.target.value)} placeholder="0" />
         </div>
       </div>
 
       {needsPlayer && playerSelect({ k: 'jugador_id', label: playerLabel })}
-      {isSub && playerSelect({ k: 'jugador2_id', label: '↓ Sale' })}
+      {isSub && playerSelect({ k: 'jugador2_id', label: 'Sale' })}
       {needsAssist && playerSelect({ k: 'jugador2_id', label: 'Asistencia', optional: true })}
       {needsRivalName && (
         <div className="form-group">
@@ -295,10 +296,10 @@ export function EventEditor({ evento, partido, jugadores, convocados, rival, sto
       )}
 
       {ours && form.tipo === 'cambio' && <p style={{ fontSize: 11, color: 'var(--gris-mid)', marginBottom: 12 }}>Los minutos de ambos jugadores se recalculan automáticamente.</p>}
-      {error && <div className="alert-error">⚠️ {error}</div>}
-      <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? '⏳ Guardando…' : 'Guardar evento'}</button>
+      {error && <div className="alert-error"><Icon name="alert-triangle" /> {error}</div>}
+      <button className="btn btn-primary btn-block" onClick={save} disabled={saving}>{saving ? <><Icon name="loader" spin /> Guardando…</> : 'Guardar evento'}</button>
       {editing && (
-        <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }} onClick={remove}>🗑️ Eliminar evento</button>
+        <button className="btn btn-block" style={{ marginTop: 8, background: 'var(--danger-pale)', color: 'var(--danger)' }} onClick={remove}><Icon name="trash" /> Eliminar evento</button>
       )}
     </Sheet>
   )

@@ -133,7 +133,7 @@ export async function compartirMvp(datos) {
   const slug = datos.jugador.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const nombre = `mvp-${datos.partido.amistoso ? 'amistoso' : `j${datos.partido.jornada}`}-${slug}.png`
   const file = new File([blob], nombre, { type: 'image/png' })
-  const texto = `⭐ ${datos.jugador.nombre}, MVP del partido · ${CLUB.name}`
+  const texto = `${datos.jugador.nombre}, MVP del partido · ${CLUB.name}`
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: 'MVP del partido', text: texto })
     return 'shared'

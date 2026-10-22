@@ -93,3 +93,10 @@ Commit the migration together with the code that uses it.
 - `npm test` and `npm run build` pass.
 - Checked on a 390px wide screen.
 - No `console.log` left behind.
+
+## Icons
+
+- No emojis in the interface: they look different on iOS, Android and Windows. Use `<Icon name="…" />` (`src/components/Icon.jsx`), which draws SVG icons from **Tabler Icons** (MIT) in the text colour.
+- The available icons are in `src/lib/icons.js`. To add one, find it on https://tabler.io/icons and copy its `<path d="…">` values in the same format.
+- For statistics (goals, assists, cards…) use `<StatIcon stat="goles" />` from `EventIcons.jsx`, so each stat always has the same icon.
+- Icon-only buttons need an `aria-label`. `icons.test.js` fails if an emoji or an unknown icon name shows up.
