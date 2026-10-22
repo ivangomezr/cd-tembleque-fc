@@ -17,6 +17,7 @@ export const CONSTRAINT_MESSAGES = {
   jugadores_posicion_check: 'Elige una posición válida.',
   jugadores_posicion_obligatoria: 'Elige la posición del jugador.',
   jugadores_estado_valido: 'El estado del jugador no es válido.',
+  jugadores_capitania_valida: 'Elige primer capitán, segundo capitán o ninguno.',
   jugadores_foto_url_valida: 'La foto no es válida. Vuelve a subirla.',
   jugadores_privado_estado_desc_valido: 'La nota es demasiado larga (máximo 280 caracteres).',
   // Seasons

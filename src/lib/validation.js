@@ -133,7 +133,9 @@ export function validarJugador(data, { jugadores = [], id = null, local = false 
     fail(`La nota admite como máximo ${LIMITS.estadoDesc} caracteres.`, 'estado_desc')
   }
   if (!urlOk(data.foto_url, { local })) fail('La foto no es válida. Vuelve a subirla.', 'foto_url')
-  return { ...data, nombre, dorsal, estado, estado_desc }
+  const capitania = data.capitania === '' || data.capitania == null ? null : entero(data.capitania)
+  if (capitania !== null && ![1, 2].includes(capitania)) fail('Elige primer capitán, segundo capitán o ninguno.', 'capitania')
+  return { ...data, nombre, dorsal, estado, estado_desc, capitania }
 }
 
 // ── Seasons ─────────────────────────────────────────────────────────────────
@@ -271,6 +273,15 @@ export function validarMvp(jugadorId, { partido, stats = [], jugadores = [] } = 
   const jugo = stats.some((s) => s.partido_id === partido.id && s.jugador_id === Number(jugadorId) && s.minutos > 0)
   if (conv.length && !conv.includes(Number(jugadorId)) && !jugo) fail(`${nombreDe(jugadores)(jugadorId)} no participó en este partido.`)
   return Number(jugadorId)
+}
+
+// ── Captain of the match (migration 20261023000000_capitanes.sql) ──────────
+/** The armband goes to a player of the starting XI. `titulares`: ids in the saved line-up. */
+export function validarCapitan(jugadorId, { titulares = [], jugadores = [] } = {}) {
+  if (jugadorId === '' || jugadorId == null) return null
+  const id = Number(jugadorId)
+  if (!titulares.map(Number).includes(id)) fail(`${nombreDe(jugadores)(id)} no está en el once inicial: el capitán tiene que ser titular.`, 'capitan')
+  return id
 }
 
 // ── MVP candidates (migration 20261022000000_mvp_finalistas.sql) ────────────

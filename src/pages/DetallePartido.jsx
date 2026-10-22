@@ -77,9 +77,13 @@ export default function DetallePartido() {
 
   const mvpId = partido.mvp_jugador_id || null
 
-  const guardarAlineacion = async (formacion, slots) => {
+  const guardarAlineacion = async (formacion, slots, capitanId = null) => {
     await store.saveAlineacion(partido.id, formacion, slots)
     setAlineacion({ formacion, jugadores: slots })
+    // after the line-up: the captain has to be one of the starters just saved
+    if ((capitanId ?? null) !== (store.getPartidos().find((p) => p.id === partido.id)?.capitan_id ?? null)) {
+      await store.updatePartido(partido.id, { capitan_id: capitanId })
+    }
   }
 
   const fichaFilas = statsPartido
@@ -162,7 +166,7 @@ export default function DetallePartido() {
             </div>
           )}
           {alineacionCargada
-            ? <Alineacion jugadores={jugadores} alineacionInicial={alineacion} onSave={guardarAlineacion} modoEdicion={isAdmin} elegibles={convocados} mvpId={partido.jugado ? mvpId : null} badges={badges} kit={partido.equipacion || DEFAULT_KIT} />
+            ? <Alineacion jugadores={jugadores} alineacionInicial={alineacion} onSave={guardarAlineacion} modoEdicion={isAdmin} elegibles={convocados} mvpId={partido.jugado ? mvpId : null} badges={badges} kit={partido.equipacion || DEFAULT_KIT} capitanId={partido.capitan_id ?? null} />
             : <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gris-mid)', fontSize: 13 }}>Cargando alineación…</div>}
 
           <div style={{ marginTop: 20, borderTop: '1px solid #e8eff8', paddingTop: 14 }}>
@@ -210,7 +214,7 @@ export default function DetallePartido() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Avatar jugador={j} />
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{j.nombre}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{j.nombre}{j.id === partido.capitan_id && <Icon name="captain-filled" title="Capitán" style={{ color: 'var(--primary)', marginLeft: 4 }} />}</div>
                           <div style={{ fontSize: 10, color: 'var(--gris-mid)' }}>{s.titular ? 'Titular' : 'Suplente'} · #{j.dorsal}</div>
                         </div>
                       </div>

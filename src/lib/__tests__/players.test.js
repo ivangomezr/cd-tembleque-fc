@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { byDorsal, splitName, playerMatchLog, rankIn } from '../players'
+import { byDorsal, splitName, playerMatchLog, rankIn, candidatosCapitan } from '../players'
 
 const CLUB = 'CD Tembleque FC'
 
@@ -45,5 +45,21 @@ describe('ficha del jugador', () => {
     expect(rankIn(t, 2, 'goles')).toBe(1)
     expect(rankIn(t, 3, 'goles')).toBe(3)
     expect(rankIn(t, 4, 'goles')).toBeNull()
+  })
+})
+
+describe('capitanes', () => {
+  const jugadores = [
+    { id: 1, nombre: 'Uno', dorsal: 1 }, { id: 4, nombre: 'Cuatro', dorsal: 4, capitania: 2 },
+    { id: 7, nombre: 'Siete', dorsal: 7, capitania: 1 }, { id: 9, nombre: 'Nueve', dorsal: 9 }, { id: 3, nombre: 'Tres', dorsal: 3, capitania: 1 },
+  ]
+  it('entre los titulares, primero los primeros capitanes y luego los segundos', () => {
+    expect(candidatosCapitan([1, 4, 7, 9, 3], jugadores).map((j) => j.id)).toEqual([3, 7, 4, 1, 9])
+  })
+  it('si no juega ningún capitán, cualquier titular', () => {
+    expect(candidatosCapitan([1, 9], jugadores).map((j) => j.id)).toEqual([1, 9])
+  })
+  it('los suplentes no entran', () => {
+    expect(candidatosCapitan([1], jugadores).map((j) => j.id)).toEqual([1])
   })
 })
