@@ -16,6 +16,23 @@ export const ESTADOS = {
 }
 
 /** By shirt number (players without one go last, then by name). */
+/** Squad captaincy (jugadores.capitania). */
+export const CAPITANIA = {
+  1: { label: 'Primer capitán', corto: '1er capitán' },
+  2: { label: 'Segundo capitán', corto: '2º capitán' },
+}
+
+/**
+ * Starters ordered for the "captain of the match" picker: first captains, then
+ * second captains, then everyone else (by number). The first one is the suggestion.
+ */
+export function candidatosCapitan(titularesIds = [], jugadores = []) {
+  const rango = (j) => (j.capitania === 1 ? 0 : j.capitania === 2 ? 1 : 2)
+  return jugadores
+    .filter((j) => titularesIds.includes(j.id))
+    .sort((a, b) => rango(a) - rango(b) || (a.dorsal ?? 99) - (b.dorsal ?? 99))
+}
+
 export const byDorsal = (a, b) =>
   (a.dorsal ?? 1000) - (b.dorsal ?? 1000) || String(a.nombre).localeCompare(String(b.nombre), 'es')
 

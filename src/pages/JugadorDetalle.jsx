@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useStore } from '../hooks/useStore'
 import { useAuth } from '../hooks/useAuth'
 import { playerTotals, fmtMin } from '../lib/playerTotals'
-import { ESTADOS, POS_CLASS, byDorsal, splitName, playerMatchLog, rankIn } from '../lib/players'
+import { ESTADOS, POS_CLASS, CAPITANIA, byDorsal, splitName, playerMatchLog, rankIn } from '../lib/players'
 import { ShirtSvg } from '../components/Camiseta'
 import TeamCrest from '../components/TeamCrest'
 import PlayerEditSheet from '../components/PlayerEditSheet'
@@ -117,6 +117,7 @@ export default function JugadorDetalle() {
             <span className="player-tag" style={estado?.color ? { color: estado.color, background: 'white' } : undefined}>
               {estado?.icono && <Icon name={estado.icono} />} {estado?.label || 'Disponible'}
             </span>
+            {CAPITANIA[j.capitania] && <span className="player-tag player-tag--cap"><Icon name="captain-filled" /> {CAPITANIA[j.capitania].label}</span>}
             {mvps > 0 && <span className="player-tag player-tag--gold"><Icon name="star-filled" /> MVP ×{mvps}</span>}
           </div>
           {j.estado !== 'disponible' && j.estado_desc && <p className="player-hero__note">{j.estado_desc}</p>}
