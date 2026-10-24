@@ -11,7 +11,6 @@ import PanelLiga from './admin/PanelLiga'
 import Sheet from '../components/Sheet'
 import { SUPABASE_READY } from '../lib/supabase'
 import { haptics } from '../lib/haptics'
-import { enviarNotificacionResultado } from '../lib/push'
 import { validarJugador, validarPartido, validarTemporada, debeMarcarseJugado, LIMITS, candidatosNecesarios, necesitaCandidatos, validarFinalistas, exigirFinalistas } from '../lib/validation'
 import MvpCandidatosPicker from '../components/MvpCandidatosPicker'
 import { messageFor, UserFacingError } from '../lib/dbErrors'
@@ -203,6 +202,7 @@ function PanelJugadores({ jugadores, store }) {
 function PanelPartidos({ partidos, store }) {
   const { equipos, partidosLiga, temporada, stats, jugadores } = useStore()
   const { isSuperAdmin } = useAuth()
+  const navigate = useNavigate()
   const [modal, setModal] = useState(null)
   const emptyP = { jornada: '', fecha: '', hora: '', enCasa: true, rival: '', campo: CLUB.homeGround, jugado: false, goles_local: 0, goles_visitante: 0, amistoso: false, escudo_rival_url: null, equipacion: DEFAULT_KIT, mvp_finalistas: [] }
   const [form, setForm] = useState(emptyP)
@@ -225,15 +225,14 @@ function PanelPartidos({ partidos, store }) {
   const partidoForm = { ...antes, fecha: form.fecha, hora: form.hora, convocados: antes?.convocados || [], mvp_finalistas: form.mvp_finalistas }
   const necesarios = candidatosNecesarios(partidoForm)
   const pideCandidatos = !antes?.jugado && necesitaCandidatos(partidoForm)
-  const yaElegidos = necesarios > 0 && (antes?.mvp_finalistas || []).length === necesarios
+  // Matches whose MVP vote would open are closed from the match page ("Cerrar el partido"),
+  // once the line-up, timeline and candidates are ready. Older matches can still be ticked here.
   const bloqueoJugado = !modal || !pideCandidatos ? null
-    : modal.mode === 'add' ? 'Guarda primero el partido y haz la convocatoria. Después podrás marcarlo como jugado y elegir los candidatos al MVP.'
-    : !necesarios ? 'Haz la convocatoria (en la página del partido) antes de marcarlo como jugado: de ella salen los candidatos al MVP.'
-    : !isSuperAdmin && !yaElegidos ? 'Solo un superadmin puede marcarlo como jugado, porque es quien elige los candidatos al MVP.'
-    : null
-  // the superadmin chooses them when marking it as played, or changes them while nobody has voted
+    : modal.mode === 'add' ? 'Guarda el partido y, cuando se juegue, ciérralo desde su página con «Cerrar el partido».'
+    : 'Se marca como jugado desde la página del partido, con «Cerrar el partido»: así la alineación, la línea de tiempo y los candidatos al MVP están listos antes de avisar a la afición.'
+  // after closing, the superadmin can still change the candidates while nobody has voted
   const editaCandidatos = isSuperAdmin && modal?.mode === 'edit' && necesarios > 0 && !!form.jugado &&
-    (pideCandidatos || (antes?.jugado && votacionAbierta(antes) && (antes.mvp_finalistas || []).length > 0))
+    !!antes?.jugado && votacionAbierta(antes) && (antes.mvp_finalistas || []).length > 0
 
   // Tick "played" automatically once the match is over (only for matches not played yet)
   useEffect(() => {
@@ -318,15 +317,10 @@ function PanelPartidos({ partidos, store }) {
     try {
       let escudoUrl = form.escudo_rival_url || null
       if (escudoFile) escudoUrl = await store.uploadEscudoRival(modal.id, escudoFile)
-      const rival = form.rival.trim()
       const data = datosPartido(escudoUrl)
-      const before = modal.mode === 'edit' ? partidos.find(p => p.id === modal.id) : null
-      const saved = modal.mode === 'add' ? await store.addPartido(data) : (await store.updatePartido(modal.id, data), { id: modal.id })
-      if (data.jugado && !before?.jugado) {
-        const { nuestros: n, rivales: r } = ourScore(data)
-        const res = n > r ? 'Victoria' : n < r ? 'Derrota' : 'Empate'
-        enviarNotificacionResultado({ partido_id: saved?.id || null, rival, resultado: `${res} ${n}-${r}` })
-      }
+      // no notification from here: fans are notified when the match is closed from its page
+      if (modal.mode === 'add') await store.addPartido(data)
+      else await store.updatePartido(modal.id, data)
       haptics.success?.()
       setModal(null)
     } catch (e) {
@@ -438,6 +432,7 @@ function PanelPartidos({ partidos, store }) {
           {bloqueoJugado && !fueraDeFecha && (
             <p id="jugado-bloqueo" style={{ fontSize: 12, color: 'var(--primary)', background: 'var(--primary-pale)', borderRadius: 8, padding: '8px 10px', margin: '-6px 0 12px' }}>
               <Icon name="lock" /> {bloqueoJugado}
+              {modal.mode === 'edit' && <> <a href={`/partido/${modal.id}`} onClick={(e) => { e.preventDefault(); setModal(null); navigate(`/partido/${modal.id}`) }} style={{ fontWeight: 700 }}>Ir al partido</a></>}
             </p>
           )}
           {auto.jugado && form.jugado && !fueraDeFecha && (
