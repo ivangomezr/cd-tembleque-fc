@@ -3,9 +3,10 @@
 ## Cómo funciona
 
 - Cuando un partido se marca como **jugado**, se abre la votación del MVP. Puede votar cualquiera, sin registrarse.
+- **Cerrar el partido:** los partidos cuya votación se abriría se marcan como jugados desde su página, en el panel «Cerrar el partido» (solo admins), no desde el formulario de Admin › Partidos. El botón «Confirmar partido jugado» solo se activa cuando el partido ha empezado, hay convocatoria, el once titular está completo (11), la línea de tiempo está revisada y están los candidatos al MVP. El resultado sale de los goles de la línea de tiempo. Al confirmar se publica el resultado, se calculan las estadísticas, se abre la votación y se envía la notificación a la afición. Hasta entonces, la alineación y la línea de tiempo solo las ve el club; el público solo ve la información del partido y la convocatoria.
 - La votación **cierra a las 23:59 (hora de Madrid) del día siguiente a la fecha del partido**. Ejemplo: partido el sábado → cierra el domingo a las 23:59.
 - Mientras está abierta, la pantalla de inicio muestra el resultado en grande con el botón «Vota al MVP del partido». Al cerrar, inicio enseña la tarjeta del MVP hasta el siguiente partido.
-- **Candidatos:** solo se puede votar a **5 jugadores elegidos por un superadmin** de entre los convocados (si hay menos de 5 convocados, entran todos). Se eligen en *Admin › Partidos › editar partido* al marcar «Partido jugado». Orden en pantalla: primero quienes tienen goles o asistencias, después por minutos jugados y luego por dorsal.
+- **Candidatos:** solo se puede votar a **5 jugadores elegidos por un superadmin** de entre los convocados (si hay menos de 5 convocados, entran todos). Se eligen en el panel **«Cerrar el partido»** de la página del partido (ver abajo). Orden en pantalla: primero quienes tienen goles o asistencias, después por minutos jugados y luego por dorsal.
   - Sin convocatoria y sin candidatos no se puede marcar el partido como jugado (mientras su votación estaría abierta; los partidos antiguos que se metan tarde no lo necesitan).
   - Solo un superadmin elige o cambia los candidatos, y solo mientras nadie haya votado. Si ya están elegidos, un admin sí puede marcar el partido como jugado.
   - Un candidato no se puede quitar de la convocatoria.

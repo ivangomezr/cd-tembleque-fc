@@ -17,6 +17,8 @@ import PlayerAvatar from '../components/PlayerAvatar'
 import { useVotacionMvp, MvpVoteSheet, MvpResults, MvpWinner } from '../components/Mvp'
 import { tiempoRestante } from '../lib/mvp'
 import Icon from '../components/Icon'
+import CierrePartido from '../components/CierrePartido'
+import { yaEmpezado } from '../lib/validation'
 
 const fmt = (str) => new Date(str).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 const posOrder = { Portero: 0, Defensa: 1, Centrocampista: 2, Delantero: 3 }
@@ -25,6 +27,30 @@ const initials = (n = '?') => n.split(' ').map((w) => w[0]).join('').slice(0, 2)
 
 const Avatar = ({ jugador, size = 32 }) => <PlayerAvatar jugador={jugador} size={size} />
 
+
+function ListaJugadores({ lista, eventInfo = {}, vacio }) {
+  if (!lista.length) return <div style={{ fontSize: 13, color: 'var(--gris-mid)' }}>{vacio}</div>
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {[...lista].sort(byPos).map((j) => {
+        const info = eventInfo[j.id]
+        return (
+          <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafd', border: '1px solid #e8eff8', padding: '4px 12px 4px 4px', borderRadius: 24 }}>
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <Avatar jugador={j} size={28} />
+              {hasBadges(info) && (
+                <span style={{ position: 'absolute', top: -7, right: -12, zIndex: 1 }}>
+                  <PlayerBadges info={info} size={9} />
+                </span>
+              )}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gris-dark)', marginLeft: hasBadges(info) ? 8 : 0 }}>{j.nombre}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function DetallePartido() {
   const { id } = useParams()
@@ -76,6 +102,7 @@ export default function DetallePartido() {
   })
 
   const mvpId = partido.mvp_jugador_id || null
+  const empezado = yaEmpezado(partido.fecha, partido.hora)
 
   const guardarAlineacion = async (formacion, slots, capitanId = null) => {
     await store.saveAlineacion(partido.id, formacion, slots)
@@ -135,10 +162,18 @@ export default function DetallePartido() {
         </div>
       </div>
 
-      {/* Timeline */}
-      {partido.jugado && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
+      {/* Closing the match (admins): nothing is published until it's ready */}
+      {isAdmin && !partido.jugado && (
+        <CierrePartido partido={partido} alineacion={alineacion} eventos={eventos} jugadores={jugadores} store={store} isSuperAdmin={auth.isSuperAdmin}
+          onEditarAlineacion={() => document.getElementById('alineacion')?.scrollIntoView({ behavior: 'smooth' })}
+          onEditarConvocatoria={() => setEditConvocatoria(true)} />
+      )}
+
+      {/* Timeline (before the match is closed, only admins see it) */}
+      {(partido.jugado || (isAdmin && empezado)) && (
+        <div className="card" id="timeline" style={{ marginBottom: '1rem' }}>
           <h2 className="with-icon" style={{ fontSize: 18, color: 'var(--primary)', marginBottom: 10 }}><Icon name="stopwatch" /> Minuto a minuto</h2>
+          {!partido.jugado && <p className="privado-nota"><Icon name="lock" /> Solo la ve el club hasta que se cierre el partido.</p>}
           <MatchTimeline
             partido={partido}
             eventos={eventos}
@@ -152,14 +187,15 @@ export default function DetallePartido() {
       )}
 
       {/* Lineup */}
-      {(partido.jugado || alineacion || isAdmin) && (
-        <div className="card" style={{ marginBottom: '1rem' }}>
+      {(partido.jugado || isAdmin) && (
+        <div className="card" id="alineacion" style={{ marginBottom: '1rem', scrollMarginTop: 80 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 className="with-icon" style={{ fontSize: 18, color: 'var(--primary)' }}><Icon name="shirt" /> {partido.jugado ? 'Alineación' : 'Alineación prevista'}</h2>
+            <h2 className="with-icon" style={{ fontSize: 18, color: 'var(--primary)' }}><Icon name="shirt" /> {partido.jugado ? 'Alineación' : 'Alineación titular'}</h2>
             <span style={{ fontSize: 12, color: 'var(--gris-mid)' }}>
               {alineacion?.formacion ? `${alineacion.formacion} · ` : ''}Equipación {(KITS[partido.equipacion] || KITS[DEFAULT_KIT]).label.toLowerCase()}
             </span>
           </div>
+          {!partido.jugado && <p className="privado-nota"><Icon name="lock" /> Solo la ve el club hasta que se cierre el partido.</p>}
           {isAdmin && (
             <div style={{ marginBottom: 12 }}>
               <KitPicker value={partido.equipacion || DEFAULT_KIT} onChange={(v) => v !== partido.equipacion && store.updatePartido(partido.id, { equipacion: v }).catch((e) => window.alert(messageFor(e)))} />
@@ -169,34 +205,26 @@ export default function DetallePartido() {
             ? <Alineacion jugadores={jugadores} alineacionInicial={alineacion} onSave={guardarAlineacion} modoEdicion={isAdmin} elegibles={convocados} mvpId={partido.jugado ? mvpId : null} badges={badges} kit={partido.equipacion || DEFAULT_KIT} capitanId={partido.capitan_id ?? null} />
             : <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gris-mid)', fontSize: 13 }}>Cargando alineación…</div>}
 
-          <div style={{ marginTop: 20, borderTop: '1px solid #e8eff8', paddingTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <h3 className="with-icon" style={{ fontSize: 15, color: 'var(--gris-dark)' }}><Icon name={partido.jugado ? 'arrows-exchange' : 'clipboard-list'} /> {partido.jugado ? 'Suplentes' : `Convocatoria (${convocados.length})`}</h3>
-              {isAdmin && <button onClick={() => setEditConvocatoria(true)} style={{ background: 'var(--primary-pale)', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 12, color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="pencil" /> Convocatoria</button>}
-            </div>
-            {(partido.jugado ? suplentes : convocados).length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {[...(partido.jugado ? suplentes : convocados)].sort(byPos).map((j) => {
-                  const info = partido.jugado ? eventInfo[j.id] : null
-                  return (
-                    <div key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafd', border: '1px solid #e8eff8', padding: '4px 12px 4px 4px', borderRadius: 24 }}>
-                      <span style={{ position: 'relative', display: 'inline-flex' }}>
-                        <Avatar jugador={j} size={28} />
-                        {hasBadges(info) && (
-                          <span style={{ position: 'absolute', top: -7, right: -12, zIndex: 1 }}>
-                            <PlayerBadges info={info} size={9} />
-                          </span>
-                        )}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gris-dark)', marginLeft: hasBadges(info) ? 8 : 0 }}>{j.nombre}</span>
-                    </div>
-                  )
-                })}
+          {partido.jugado && (
+            <div style={{ marginTop: 20, borderTop: '1px solid #e8eff8', paddingTop: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <h3 className="with-icon" style={{ fontSize: 15, color: 'var(--gris-dark)' }}><Icon name="arrows-exchange" /> Suplentes</h3>
+                {isAdmin && <button onClick={() => setEditConvocatoria(true)} style={{ background: 'var(--primary-pale)', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 12, color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="pencil" /> Convocatoria</button>}
               </div>
-            ) : (
-              <div style={{ fontSize: 13, color: 'var(--gris-mid)' }}>{partido.jugado ? 'Sin suplentes.' : 'Aún no hay jugadores convocados.'}</div>
-            )}
+              <ListaJugadores lista={suplentes} eventInfo={eventInfo} vacio="Sin suplentes." />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Call-up of a match not played yet (public) */}
+      {!partido.jugado && (convocados.length > 0 || isAdmin) && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h2 className="with-icon" style={{ fontSize: 18, color: 'var(--primary)' }}><Icon name="clipboard-list" /> Convocatoria{convocados.length ? ` (${convocados.length})` : ''}</h2>
+            {isAdmin && <button onClick={() => setEditConvocatoria(true)} style={{ background: 'var(--primary-pale)', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 12, color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="pencil" /> Editar</button>}
           </div>
+          <ListaJugadores lista={convocados} vacio="Aún no hay jugadores convocados." />
         </div>
       )}
 
