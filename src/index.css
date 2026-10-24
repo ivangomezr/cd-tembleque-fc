@@ -1420,3 +1420,22 @@ input[type="time"] {
 .player-tag--cap { background: var(--accent-light); color: var(--navy); }
 .player-tag--cap-2 { background: linear-gradient(135deg, #f1f4f8, #b9c3cf); }
 
+
+/* ── Closing a match (admins) ─────────────────────────────────────────── */
+.cierre { border: 2px solid var(--primary); margin-bottom: 1rem; }
+.cierre__badge { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); background: var(--primary-pale); padding: 3px 8px; border-radius: 20px; }
+.cierre__intro { font-size: 13px; color: var(--home-muted); margin: -4px 0 12px; line-height: 1.45; }
+.cierre__pasos { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.cierre__pasos li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--navy); padding: 8px 10px; border-radius: 10px; background: #fff7e6; }
+.cierre__pasos li .icon { color: #b7791f; }
+.cierre__pasos li.ok { background: #eaf6ee; }
+.cierre__pasos li.ok .icon { color: var(--res-v); }
+.cierre__link { margin-left: auto; border: none; background: white; color: var(--primary); font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 8px; cursor: pointer; min-height: 30px; }
+.cierre__check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--navy); margin-bottom: 12px; cursor: pointer; line-height: 1.4; }
+.cierre__check input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--primary); flex-shrink: 0; }
+.cierre__marcador { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--navy); color: #cfe0f5; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; }
+.cierre__marcador strong { font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: white; font-weight: 400; line-height: 1; }
+.cierre__nota { font-size: 13px; color: var(--home-muted); background: var(--primary-pale); border-radius: 10px; padding: 8px 10px; margin-bottom: 12px; }
+.cierre__nota--ok { background: #eaf6ee; color: var(--res-v); }
+.cierre__falta { font-size: 12px; color: var(--home-muted); text-align: center; margin-top: 8px; }
+.privado-nota { font-size: 12px; color: var(--home-muted); margin: -4px 0 10px; display: flex; align-items: center; gap: 4px; }

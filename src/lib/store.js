@@ -16,6 +16,7 @@ import {
   validarConvocados, validarMvp, validarAlineacion, validarEvento, validarBorrarEvento, validarEstadistica,
   validarVoto, textoOk, urlOk, validarFinalistas, exigirFinalistas, validarCapitan,
 } from './validation'
+import { estadoCierre } from './cierre'
 
 const USE_SUPABASE = SUPABASE_READY
 
@@ -408,6 +409,26 @@ export const store = {
     // Minutes are (re)computed every time a match is (or stays) played
     if (patch.jugado ?? before?.jugado) await store.recalcularPartido(id)
     notify()
+  },
+
+  /**
+   * "Cerrar el partido": marks it as played in one go, with the score taken from
+   * the timeline and (when the vote opens) the MVP candidates, once the line-up and
+   * timeline are in place. Stats and minutes are recalculated by updatePartido.
+   * @returns the final score { goles_local, goles_visitante }
+   */
+  async cerrarPartido(partido_id, { mvp_finalistas = null } = {}) {
+    const partido = _partidos.find((p) => p.id === partido_id)
+    if (!partido) throw new ValidationError('El partido ya no existe. Recarga la página.')
+    if (partido.jugado) throw new ValidationError('Este partido ya está cerrado.')
+    const [alineacion, eventos] = await Promise.all([store.getAlineacion(partido_id), store.getEventos(partido_id)])
+    const estado = estadoCierre({ partido, alineacion, eventos, finalistas: mvp_finalistas, timelineRevisada: true })
+    const pendiente = estado.pasos.find((p) => !p.ok)
+    if (pendiente) throw new ValidationError(`Antes de cerrar el partido: ${pendiente.texto.charAt(0).toLowerCase()}${pendiente.texto.slice(1)}.`)
+    const patch = { jugado: true, ...estado.marcador }
+    if (estado.necesitaCandidatos && mvp_finalistas) patch.mvp_finalistas = mvp_finalistas
+    await store.updatePartido(partido_id, patch)
+    return estado.marcador
   },
 
   /** Checks a call-up against the lineup, timeline and stats of the match. */
