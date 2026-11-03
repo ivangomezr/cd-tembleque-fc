@@ -1,5 +1,23 @@
 # ⚽ CD Tembleque FC — Club Progressive Web App (React + Supabase)
 
+![status](https://img.shields.io/badge/status-live-brightgreen)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-JSX-F7DF1E?logo=javascript&logoColor=black)
+![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)
+![React Router](https://img.shields.io/badge/React_Router-6-CA4245?logo=reactrouter&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)
+![Backend](https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase&logoColor=white)
+![Database](https://img.shields.io/badge/Database-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Images](https://img.shields.io/badge/Images-Cloudinary-3448C5?logo=cloudinary&logoColor=white)
+![Push](https://img.shields.io/badge/Push-Web_Push-FF6F00)
+![Deploy](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
+![Analytics](https://img.shields.io/badge/Analytics-Vercel-000000?logo=vercel&logoColor=white)
+![Unit tests](https://img.shields.io/badge/Unit_tests-Vitest-6E9F18?logo=vitest&logoColor=white)
+![DB tests](https://img.shields.io/badge/DB_tests-pgTAP-336791?logo=postgresql&logoColor=white)
+![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
+![Built with](https://img.shields.io/badge/Built_with-Claude-D97757?logo=claude&logoColor=white)
+
 The official app of **CD Tembleque FC**, a football club in **Segunda Autonómica de Castilla-La Mancha (Group 4)**. Fans follow results, the league table, the squad and the season stats, watch a minute-by-minute timeline of every match and **vote for the man of the match**. The club staff run everything from an admin panel. It installs on any phone like a native app.
 
 > 🏟️ **Real-world project, built with AI.** I designed this app for my local club and run it in production, used by its players, staff and fans: **[cd-tembleque-fc.vercel.app](https://cd-tembleque-fc.vercel.app)**
@@ -216,6 +234,15 @@ cd-tembleque-fc/
 Import the repository in Vercel (preset **Vite**) and add the variables above for Production and Preview. Every push to `main` deploys production, and every pull request gets a preview URL.
 
 > ℹ️ Branching model and commit conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## ⚖️ Data and images
+
+- **Players**: names, photos and stats of CD Tembleque FC players are shown with their consent. This data lives in the app's database, not in this repository. Any player can ask for their data or photo to be removed.
+- **Team photo**: the squad photo in `public/img` is included with the consent of the players who appear in it.
+- **Other clubs**: team names, crests and results are shown only to identify the teams in the league table and fixtures. Crests and names belong to their respective clubs. If a club wants its crest removed, contact me and I will take it down.
+- **Screenshots** in this README show real club data with the players' permission.
 
 ---
 
