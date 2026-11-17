@@ -6,6 +6,7 @@ import SessionNotice from './components/SessionNotice'
 import { useAuth, authService } from './hooks/useAuth'
 import { setActorProvider, setVoterSessionProvider } from './lib/store'
 import { PullIndicator } from './components/PullIndicator'
+import ScrollManager from './components/ScrollManager'
 import { store } from './lib/store'
 import TeamCrest from './components/TeamCrest'
 import Inicio from './pages/Inicio'
@@ -138,6 +139,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollManager />
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <PullIndicator onRefresh={handleRefresh} />
       <Navbar />
